@@ -2,4 +2,60 @@
 
 Your AI memory as a folder of Markdown files. Works with any model. No account, no cloud, no company in the middle.
 
-Work in progress. The vault file format is specified in [docs/SPEC.md](docs/SPEC.md).
+lil memory is a small local [MCP](https://modelcontextprotocol.io) server. Every AI client you connect (Claude Desktop, Claude Code, and others) reads and writes the same memories. The memories are plain files in a folder you own, so you can read and edit them in [Obsidian](https://obsidian.md) or any text editor.
+
+## Quickstart
+
+```sh
+uvx lil-memory init                      # 1. create the vault at ~/lil-memory
+uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code)
+```
+
+3. Restart the client and talk to it:
+   - "Remember that I prefer British spelling."
+   - "Load my context for acme-site."
+
+Open `~/lil-memory` in Obsidian to see and edit your memories.
+
+`lil-memory doctor` checks your setup. `lil-memory reindex` rebuilds the search index from the files. Use `--vault PATH` or `$LIL_MEMORY_VAULT` to keep the vault somewhere else.
+
+## The format at a glance
+
+One memory is one Markdown file. Its folder is its scope.
+
+```
+~/lil-memory/
+├── global/prefers-british-spelling.md
+├── projects/acme-site/deploys-to-cloudflare.md
+└── .lil-memory/          # search index and trash; safe to delete the index
+```
+
+```markdown
+---
+id: 01J9XK3M7Q2R8S5T6V7W8X9Y0Z
+type: preference
+status: active
+tags:
+  - writing
+source: claude-desktop 1.0
+created: 2026-10-05T09:12:00Z
+updated: 2026-10-05T09:12:00Z
+---
+Prefers British spelling and short paragraphs in client-facing copy.
+```
+
+- Updating a memory never overwrites it. The old file is marked `superseded` and links to the new one.
+- Forgetting a memory moves it to `.lil-memory/trash/`.
+- The full format is in [docs/SPEC.md](docs/SPEC.md). Other tools can implement it without reading this code.
+
+The connected AI exposes six tools: `remember`, `recall`, `get`, `update`, `forget` and `list_scopes`. It also has a `memory://profile` resource and a `load_context` prompt.
+
+## Security
+
+- **Local only.** Version 0.1 talks to clients only over stdio, as a local process. Nothing listens on the network.
+- **Memories are untrusted input.** Memories written by one AI are read by another, so stored text could try to give instructions. lil memory returns memories inside clearly marked `<memory>` blocks, labeled as data and not instructions. It never acts on their content itself.
+- **Remote access (planned for 0.2).** Some clients, like ChatGPT, need a remote URL. Version 0.2 will add an HTTP mode that binds to `127.0.0.1` and requires a bearer token. Exposing it through a tunnel puts your memory on the internet, protected only by that token. Do this only if you accept that trade-off.
+
+## License
+
+MIT

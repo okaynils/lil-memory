@@ -60,3 +60,17 @@ These were mistakes in tests while they were being written. No assertion was loo
 3. **`source()` without a request context.** FastMCP raises `ValueError`, not `AttributeError`, when a tool is called with no request context. `source()` now handles both.
 
 Two writers that pass the "is it still active?" check at the same moment can both succeed. That is the known limitation in SPEC §13, and the test accepts it explicitly.
+
+## Benchmark results (M-series MacBook, 2026-10-05)
+
+| Budget | Limit | Measured |
+|---|---|---|
+| Full reindex of 10k | 5 s | 0.9 s |
+| Refresh, no change | 100 ms | 52–80 ms |
+| `recall` (p95, warm) | 50 ms | 4–6 ms |
+| `remember` (p95) | 30 ms | 17–20 ms |
+| Cold start | 500 ms | about 290 ms |
+
+- **Scan cost on the first recall.** A `recall` that arrives after the 2-second window also runs the mtime scan, and then takes about 90 ms. The brief budgets recall and refresh separately, so this passes, but the first recall after a pause pays for the scan.
+- **Where the scan time goes.** Nearly all of it is per-file `stat()` calls. Running them in threads was slower on APFS.
+- **If this needs to get faster:** move the scan off the request path, for example by running it right after each reply, or watch directories with kqueue or inotify. The brief rules out daemons and extra dependencies, so neither is done here.
