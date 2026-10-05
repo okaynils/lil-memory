@@ -404,3 +404,12 @@ def test_forget_moves_to_trash_and_handles_collisions(tmp_path):
         "Z.md"
     )
     assert (tmp_path / trashed).read_text() == vault.dump(second.meta, second.body)
+
+
+def test_failed_supersede_removes_the_new_file(tmp_path):
+    old = vault.create(tmp_path, "Old", "fact")
+    stale = vault.read(tmp_path, old.path)
+    vault.supersede(tmp_path, old, "First")  # someone else got there first
+    with pytest.raises(VaultError, match="already superseded"):
+        vault.create(tmp_path, "Second", "fact", supersedes=stale)
+    assert not (tmp_path / "global/second.md").exists()

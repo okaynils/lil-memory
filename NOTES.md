@@ -50,3 +50,13 @@ These were mistakes in tests while they were being written. No assertion was loo
   - Claude Code rewrites `~/.claude.json` while it runs, so installing while it is open can lose that write. The CLI tells the user to restart the client.
 - **Testing:** `tests/test_cli.py` points `HOME`, `APPDATA` and `CLAUDE_CONFIG_DIR` at a temporary directory for every test, and asserts this before each one.
 - **`source`:** the field records the MCP client's `clientInfo` name and version, such as `claude-code 2.1.0`. The server cannot see which model is calling it, so the brief's `claude-desktop / claude-opus-5.5` example cannot be produced as-is.
+
+## Concurrency findings
+
+`tests/test_concurrency.py` runs real processes against one vault at the same moment. It found three bugs:
+
+1. **Index creation race.** On a fresh index opened by several processes at once, `PRAGMA journal_mode = WAL` failed with "database is locked", because changing the journal mode ignores the busy timeout. It now runs only when the mode isn't WAL yet, and retries briefly.
+2. **Stray file after a lost update race.** When two `update`s raced on one memory, the loser reported an error but left its new file behind. That file claimed to supersede the old one. The new file is now removed when marking the old memory fails. This is also in SPEC §10.2.
+3. **`source()` without a request context.** FastMCP raises `ValueError`, not `AttributeError`, when a tool is called with no request context. `source()` now handles both.
+
+Two writers that pass the "is it still active?" check at the same moment can both succeed. That is the known limitation in SPEC §13, and the test accepts it explicitly.

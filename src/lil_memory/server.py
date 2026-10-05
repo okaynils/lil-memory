@@ -83,7 +83,7 @@ def build(root: Path) -> FastMCP:
         try:
             info = ctx.session.client_params.clientInfo
             return f"{info.name} {info.version}".strip()
-        except AttributeError:
+        except (AttributeError, ValueError):  # no request context, e.g. a direct call
             return ""
 
     def one(ref: str) -> vault.Memory:

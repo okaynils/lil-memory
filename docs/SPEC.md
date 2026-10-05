@@ -320,6 +320,8 @@ To replace memory **old** with new content:
 
 Because of this order, a crash between steps 2 and 3 leaves two active memories, which is recoverable. It never leaves a superseded memory that points to nothing.
 
+If step 3 fails, the writer deletes the file it wrote in step 2 and reports the error. For example, another writer may have superseded **old** in the meantime, or its frontmatter may have become malformed. That way a failed operation leaves nothing behind that the caller might duplicate by retrying.
+
 ### 10.3 Forget (`forget`)
 
 1. Move the file, unchanged, to `.lil-memory/trash/<relative path>` and create folders as needed.

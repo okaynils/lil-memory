@@ -89,7 +89,7 @@ class Index:
             check_same_thread=False,
         )
         self.db.row_factory = sqlite3.Row
-        self.db.execute("PRAGMA journal_mode = WAL")
+        self._use_wal()
         self.db.execute("PRAGMA synchronous = NORMAL")
         self._last_scan = float("-inf")
         with self._write():
@@ -100,6 +100,19 @@ class Index:
                 for statement in filter(str.strip, _SCHEMA.split(";")):
                     self.db.execute(statement)
                 self.db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    def _use_wal(self) -> None:
+        """WAL lets several server processes share the index. The mode is stored in the file,
+        but switching to it ignores the busy timeout, so a fresh index opened by several
+        processes at once needs a few retries."""
+        for _ in range(100):
+            try:
+                if self.db.execute("PRAGMA journal_mode").fetchone()[0] != "wal":
+                    self.db.execute("PRAGMA journal_mode = WAL")
+                return
+            except sqlite3.OperationalError:
+                time.sleep(0.05)
+        raise RuntimeError("could not open the index in WAL mode; is another process stuck?")
 
     def close(self) -> None:
         self.db.close()

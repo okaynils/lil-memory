@@ -249,7 +249,11 @@ def create(
     path = write_new(root, validate_scope(scope), slugify(content), text, taken or disk_stems(root))
     new = read(root, path)
     if supersedes is not None:
-        mark_superseded(root, supersedes.path, new.stem)
+        try:
+            mark_superseded(root, supersedes.path, new.stem)
+        except BaseException:  # e.g. another writer superseded it first: undo our half
+            os.unlink(root / path)
+            raise
     return new
 
 
