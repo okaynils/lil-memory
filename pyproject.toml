@@ -1,0 +1,31 @@
+[project]
+name = "lil-memory"
+version = "0.1.0.dev0"
+description = "Your AI memory as a folder of Markdown files. Works with any model."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nils Fahrni" }]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+lil-memory = "lil_memory.cli:main"
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
