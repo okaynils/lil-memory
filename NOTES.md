@@ -33,3 +33,5 @@ These were mistakes in tests while they were being written. No assertion was loo
 
 - `test_index.py::test_scopes_and_stats` expected 6 memories, but the setup creates 5: one, two, three (superseded), four, and broken.
 - `test_index.py::test_duplicate_ids_belong_to_the_first_path` copied into a `global/` folder that didn't exist yet.
+- `test_server.py::test_remember_reports_similar_memories` expected the full 8-word slug, but slugs keep 6 words (SPEC §4.1).
+- `test_server.py::test_obsidian_edit_is_recalled_within_two_seconds` checked that "green" was absent from the whole output. The title is the unchanged filename, which still contains "green". The test now checks the body text instead, which is what it was meant to verify.
