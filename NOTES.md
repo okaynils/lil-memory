@@ -74,3 +74,16 @@ Two writers that pass the "is it still active?" check at the same moment can bot
 - **Scan cost on the first recall.** A `recall` that arrives after the 2-second window also runs the mtime scan, and then takes about 90 ms. The brief budgets recall and refresh separately, so this passes, but the first recall after a pause pays for the scan.
 - **Where the scan time goes.** Nearly all of it is per-file `stat()` calls. Running them in threads was slower on APFS.
 - **If this needs to get faster:** move the scan off the request path, for example by running it right after each reply, or watch directories with kqueue or inotify. The brief rules out daemons and extra dependencies, so neither is done here.
+
+## HTTP mode: secret URL instead of a bearer token (owner's decision, 2026-10-05)
+
+- **Why the brief's plan doesn't work.** The brief planned "HTTP bound to 127.0.0.1, requiring a bearer token generated at `init`". But ChatGPT connectors support only OAuth 2.1 or no authentication. OpenAI's docs say static API keys and bearer tokens are not supported: https://developers.openai.com/plugins/build/auth
+- **The two options.** A minimal built-in OAuth server would be about 200 lines, with stored clients and tokens plus a consent page. A secret URL is about 30 lines. The owner chose the secret URL as the smallest solution that fits the prime directive.
+- **What `serve --http` does:**
+  - Serves MCP only at `/mcp/<secret>` on `127.0.0.1`; every other path returns 404. The secret is 128 bits and lives in `.lil-memory/http-secret`, with mode 0600 and listed in `.lil-memory/.gitignore`.
+  - `--rotate` replaces the secret. `--port` sets the port, which defaults to 8765.
+  - DNS-rebinding protection is off. It would reject the tunnel's `Host` header, and a rebinding attack would still need the secret path.
+  - Logging is at WARNING, so uvicorn's access log never prints the URL.
+- **Secret creation.** The secret is created on the first `serve --http`, not at `init`, so people who never use HTTP never have a credential lying around.
+- **Not done.** No real ChatGPT end-to-end check has been run. The tests use the MCP SDK's HTTP client and raw requests that carry a tunnel `Host` header.
+- **Later.** If the threat model ever calls for it, OAuth can be added alongside the secret URL without breaking it.

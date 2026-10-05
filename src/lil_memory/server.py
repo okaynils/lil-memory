@@ -1,4 +1,7 @@
-"""The MCP surface: six tools, one resource, one prompt. Thin glue over vault and index."""
+"""The MCP surface: six tools, one resource, one prompt. Thin glue over vault and index.
+
+Served over stdio for local clients, or over HTTP at a secret URL for remote ones.
+"""
 
 import html
 import re
@@ -7,6 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
 from lil_memory import vault
@@ -74,10 +78,11 @@ def _rows(rows: list[dict]) -> list[dict]:
     return rows
 
 
-def build(root: Path) -> FastMCP:
+def build(root: Path, **http: object) -> FastMCP:
+    """The server for a vault. `http` holds FastMCP's HTTP settings (path, port, ...)."""
     root = root.expanduser().resolve()
     index = Index(root)
-    mcp = FastMCP("lil-memory", instructions=INSTRUCTIONS)
+    mcp = FastMCP("lil-memory", instructions=INSTRUCTIONS, **http)
 
     def source(ctx: Context | None) -> str:
         try:
@@ -210,3 +215,21 @@ def build(root: Path) -> FastMCP:
 
 def serve(root: Path) -> None:
     build(root).run("stdio")
+
+
+def serve_http(root: Path, secret: str, port: int) -> None:
+    """Serve MCP at http://127.0.0.1:<port>/mcp/<secret> for remote clients behind a tunnel.
+
+    The unguessable path is the only protection (ChatGPT connectors cannot send a static
+    token). That also makes DNS-rebinding protection unnecessary, and it would reject the
+    tunnel's Host header, so it is off. Logging stays at WARNING so access logs never print
+    the secret URL.
+    """
+    build(
+        root,
+        host="127.0.0.1",
+        port=port,
+        streamable_http_path=f"/mcp/{secret}",
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+        log_level="WARNING",
+    ).run("streamable-http")

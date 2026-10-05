@@ -54,7 +54,7 @@ def test_init_creates_vault(tmp_path, capsys):
     assert main(["init", str(root)]) == 0
     assert (root / "global").is_dir()
     assert (root / ".lil-memory/config.toml").read_text() == 'format = "0.1"\n'
-    assert (root / ".lil-memory/.gitignore").read_text() == "index.sqlite*\n"
+    assert (root / ".lil-memory/.gitignore").read_text() == "index.sqlite*\nhttp-secret\n"
     assert (root / ".lil-memory/index.sqlite").exists()
     assert f"Vault ready at {root.resolve()} (0 memories)" in capsys.readouterr().out
 

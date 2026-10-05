@@ -52,9 +52,18 @@ The connected AI exposes six tools: `remember`, `recall`, `get`, `update`, `forg
 
 ## Security
 
-- **Local only.** Version 0.1 talks to clients only over stdio, as a local process. Nothing listens on the network.
+- **Local by default.** Claude Desktop and Claude Code start lil memory as a local process and talk to it over stdio. Nothing listens on the network.
 - **Memories are untrusted input.** Memories written by one AI are read by another, so stored text could try to give instructions. lil memory returns memories inside clearly marked `<memory>` blocks, labeled as data and not instructions. It never acts on their content itself.
-- **Remote access (planned for 0.2).** Some clients, like ChatGPT, need a remote URL. Version 0.2 will add an HTTP mode that binds to `127.0.0.1` and requires a bearer token. Exposing it through a tunnel puts your memory on the internet, protected only by that token. Do this only if you accept that trade-off.
+- **Remote clients such as ChatGPT** can only reach a server through an HTTPS URL, and ChatGPT can't send a static token. So HTTP mode keeps things minimal: the URL itself is the secret. Most people should skip this unless they really need ChatGPT.
+
+  ```sh
+  lil-memory serve --http                         # prints http://127.0.0.1:8765/mcp/<secret>
+  cloudflared tunnel --url http://127.0.0.1:8765  # or any other tunnel
+  ```
+
+  In ChatGPT, turn on developer mode in the settings, then add `https://<tunnel-host>/mcp/<secret>` as a custom connector with no authentication.
+
+  **The trade-off:** anyone who has that URL can read, change and forget all of your memories. A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider. OpenAI also stores it in your connector settings, and sees every memory ChatGPT reads. HTTP mode only runs while you keep `serve --http` open. `lil-memory serve --http --rotate` replaces the secret, and the old URL stops working immediately.
 
 ## License
 

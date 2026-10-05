@@ -6,6 +6,7 @@ for the MCP protocol.
 
 import argparse
 import os
+import secrets
 import sys
 import time
 import tomllib
@@ -14,6 +15,8 @@ from pathlib import Path
 from lil_memory import __version__
 
 DEFAULT_VAULT = "~/lil-memory"
+DEFAULT_PORT = 8765
+GITIGNORE = "index.sqlite*\nhttp-secret\n"
 LABELS = {True: "ok  ", False: "FAIL", None: "note"}
 
 
@@ -48,7 +51,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     data = root / vault.DATA_DIR
     (root / "global").mkdir(parents=True, exist_ok=True)
     data.mkdir(exist_ok=True)
-    files = {"config.toml": f'format = "{vault.FORMAT}"\n', ".gitignore": "index.sqlite*\n"}
+    files = {"config.toml": f'format = "{vault.FORMAT}"\n', ".gitignore": GITIGNORE}
     for name, text in files.items():
         if not (data / name).exists():
             (data / name).write_text(text, encoding="utf-8")
@@ -62,6 +65,22 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def http_secret(root: Path, rotate: bool) -> str:
+    """The secret in the HTTP URL: 128 random bits, readable only by the user, never in git."""
+    data = root / ".lil-memory"
+    path = data / "http-secret"
+    if rotate or not path.exists():
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(secrets.token_urlsafe(16) + "\n")
+        os.chmod(path, 0o600)
+        ignore = data / ".gitignore"
+        lines = ignore.read_text().splitlines() if ignore.exists() else []
+        if "http-secret" not in lines:
+            ignore.write_text("\n".join([*lines, "http-secret"]) + "\n")
+    return path.read_text().strip()
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     from lil_memory.index import check_fts5
 
@@ -69,9 +88,26 @@ def cmd_serve(args: argparse.Namespace) -> int:
     root = vault_path(args)
     if read_config(root) is None:
         return no_vault(root)
-    from lil_memory.server import serve
+    if args.rotate and not args.http:
+        return fail("--rotate only applies to --http")
+    if not args.http:
+        from lil_memory.server import serve
 
-    serve(root)
+        serve(root)
+        return 0
+    from lil_memory.server import serve_http
+
+    secret = http_secret(root, args.rotate)
+    local = f"http://127.0.0.1:{args.port}"
+    print(
+        f"lil memory is serving {root} over HTTP at\n\n    {local}/mcp/{secret}\n\n"
+        f"For ChatGPT, expose it with a tunnel, e.g. `cloudflared tunnel --url {local}`,\n"
+        f"then add https://<tunnel-host>/mcp/{secret} as a connector with no authentication.\n"
+        "Anyone with this URL can read and change your memories. "
+        "`serve --http --rotate` replaces it.",
+        file=sys.stderr,
+    )
+    serve_http(root, secret, args.port)
     return 0
 
 
@@ -167,7 +203,12 @@ def build_parser() -> argparse.ArgumentParser:
         return p
 
     command("init", cmd_init, "create a vault").add_argument("path", nargs="?")
-    command("serve", cmd_serve, "run the MCP server over stdio")
+    serve = command("serve", cmd_serve, "run the MCP server (stdio, or HTTP for remote clients)")
+    serve.add_argument("--http", action="store_true", help="serve at a secret URL on 127.0.0.1")
+    serve.add_argument(
+        "--port", type=int, default=DEFAULT_PORT, help="HTTP port (default: %(default)s)"
+    )
+    serve.add_argument("--rotate", action="store_true", help="replace the secret URL")
     command("install", cmd_install, "add lil-memory to a client's MCP config").add_argument(
         "client", choices=["claude-desktop", "claude-code"]
     )
