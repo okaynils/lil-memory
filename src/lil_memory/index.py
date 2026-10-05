@@ -269,12 +269,14 @@ class Index:
         target = re.split(r"[|#]", target, maxsplit=1)[0].strip()
         if target.lower().endswith(".md"):
             target = target[:-3]
+        # Match on the (Unicode-lowercased) stem in SQL, then on the full path in Python:
+        # SQLite's lower() only folds ASCII.
+        stem = target.rsplit("/", 1)[-1].lower()
+        sql = f"SELECT {_COLUMNS} FROM files f JOIN fts ON fts.rowid = f.rowid WHERE f.stem = ?"
+        rows = [dict(r) for r in self.db.execute(sql + " ORDER BY f.path", (stem,))]
         if "/" in target:
-            cond, arg = "lower(f.path) = ?", target.lower() + ".md"
-        else:
-            cond, arg = "f.stem = ?", target.lower()
-        sql = f"SELECT {_COLUMNS} FROM files f JOIN fts ON fts.rowid = f.rowid WHERE {cond}"
-        return [dict(r) for r in self.db.execute(sql + " ORDER BY f.path", (arg,))]
+            rows = [r for r in rows if r["path"][:-3].lower() == target.lower()]
+        return rows
 
     def stem_taken(self, stem: str) -> bool:
         return (

@@ -229,7 +229,9 @@ tags:
   - tone
 ```
 
-An empty sequence in an unknown field is written as `[]`.
+An empty sequence in an unknown field is written as `[]`, and an empty mapping as `{}`.
+
+**Keys** are written plain if they match `[A-Za-z0-9_][A-Za-z0-9_ -]*` and have no trailing space. Otherwise they are written double-quoted.
 
 **Mappings** nested inside unknown fields use block style with two-space indentation.
 
@@ -277,6 +279,8 @@ Readers resolve a wikilink as follows:
 3. If there are several candidates, choose in this order: a file in the same folder as the linking file, then the shortest path, then the path that sorts first by code point.
 
 A link that resolves to nothing is **broken**. A broken link is not an error for readers.
+
+lil memory 0.1 writes these links but never needs to follow them. These rules are for other tools, and for the planned `lint` command.
 
 ## 9. Writing files
 
@@ -403,7 +407,7 @@ updated: 2026-09-01T10:00:00Z
 The acme site deploys to Netlify.
 ```
 
-After `update(ref="the-acme-site-deploys-to-netlify", content="The acme site deploys to Cloudflare Pages since October.")`, the old file is rewritten:
+After `update(ref="the-acme-site-deploys-to-netlify", content="The acme site deploys to Cloudflare Pages since October.")`, the old file `projects/acme-site/the-acme-site-deploys-to-netlify.md` is rewritten:
 
 ```markdown
 ---
@@ -469,4 +473,4 @@ aliases:
 
 - **Slugs for non-Latin text** all become `memory`, `memory-2`, and so on (§4.1). Users can rename the files.
 - **Concurrent supersedes.** If two writers supersede the same memory at the same moment, both new memories stay `active`, and the old one's `superseded_by` names whichever writer finished last. Nothing is lost, and the user can supersede or forget one of them.
-- **Uniqueness across folders** depends on writers seeing each other's files (§4.2). Two writers that create the same slug in different folders at the same moment can produce a duplicate stem. Readers already handle that (§8).
+- **Uniqueness across folders** depends on the writer knowing about every existing file (§4.2). lil memory checks the index shared by all its processes, which is up to 2 seconds behind files created by hand. Two writers creating the same slug in *different* folders at the same moment can also produce a duplicate stem. Within one folder, the no-clobber rule in §9 always prevents it. Readers already handle duplicates (§8).

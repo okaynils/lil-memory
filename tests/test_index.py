@@ -248,3 +248,10 @@ def test_hand_edit_is_visible_within_two_seconds(tmp_path, idx, monkeypatch):
     idx._last_scan = time.monotonic() - 2.0  # the throttle window has just expired
     assert idx.refresh() == 1
     assert paths(idx.search("purple")) == [m.path]
+
+
+def test_resolve_paths_case_insensitively_beyond_ascii(tmp_path, idx):
+    write(tmp_path, "Ärende/Möte.md", "Fika at three")
+    idx.refresh(force=True)
+    assert paths(idx.resolve("ärende/möte")) == ["Ärende/Möte.md"]
+    assert paths(idx.resolve("MÖTE")) == ["Ärende/Möte.md"]
