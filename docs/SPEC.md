@@ -60,7 +60,7 @@ The vault root MAY contain other files, such as a README, and other folders. Rea
 | Path | Status |
 |---|---|
 | `.lil-memory/index.sqlite` (and `-wal`, `-shm`) | A cache. It MAY be deleted at any time and MUST NOT be needed to recover data. |
-| `.lil-memory/config.toml` | Reserved. Version 0.1 defines no keys. |
+| `.lil-memory/config.toml` | Marks the folder as a vault. Contains `format = "0.1"`, the version of this spec the vault was created with. Readers MAY use it to recognize a vault and MUST ignore keys they do not know. |
 | `.lil-memory/trash/` | Forgotten memories (§10.3). These are user data and can be recovered by hand. |
 
 The index is specific to one machine, so it MUST NOT be synced between machines. When a writer creates `.lil-memory/`, it SHOULD also create `.lil-memory/.gitignore` containing the single line `index.sqlite*`. The trash folder can still be versioned that way.
@@ -170,6 +170,14 @@ Field names are case-sensitive. Readers MUST lowercase the values of `type` and 
 - `active`: a current memory. Search returns it.
 - `pending`: written by an agent but not yet approved by the user. Search does not return it by default.
 - `superseded`: replaced by a newer memory. Search does not return it, but it can still be fetched directly. History is kept, never overwritten.
+
+**Type meanings:**
+
+- `fact`: something true about the user or their world.
+- `preference`: how the user likes things done.
+- `project`: an overview of a piece of work, such as its goal, stack or current state. The `projects/` folders group memories by project. This type marks the memory that describes the project itself.
+- `decision`: a choice that was made, ideally with the reason.
+- `note`: anything else. This is also the default.
 
 Status is the only thing that decides whether a memory is active. A memory MAY have `superseded_by` while its status is `active`, for example if the user reverted a change by hand. In that case it is treated as active.
 
@@ -455,8 +463,8 @@ aliases:
   - style
 ```
 
-## 13. Open questions for version 0.1
+## 13. Known limitations of version 0.1
 
-- **`type: project`** overlaps with `projects/` scopes. It may be renamed or dropped before 0.1 is released.
-- **`config.toml`** has no keys yet and may be removed if 0.1 doesn't need one.
-- **Slugs for non-Latin text** (§4.1).
+- **Slugs for non-Latin text** all become `memory`, `memory-2`, and so on (§4.1). Users can rename the files.
+- **Concurrent supersedes.** If two writers supersede the same memory at the same moment, both new memories stay `active`, and the old one's `superseded_by` names whichever writer finished last. Nothing is lost, and the user can supersede or forget one of them.
+- **Uniqueness across folders** depends on writers seeing each other's files (§4.2). Two writers that create the same slug in different folders at the same moment can produce a duplicate stem. Readers already handle that (§8).
