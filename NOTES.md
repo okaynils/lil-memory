@@ -35,3 +35,18 @@ These were mistakes in tests while they were being written. No assertion was loo
 - `test_index.py::test_duplicate_ids_belong_to_the_first_path` copied into a `global/` folder that didn't exist yet.
 - `test_server.py::test_remember_reports_similar_memories` expected the full 8-word slug, but slugs keep 6 words (SPEC §4.1).
 - `test_server.py::test_obsidian_edit_is_recalled_within_two_seconds` checked that "green" was absent from the whole output. The title is the unchanged filename, which still contains "green". The test now checks the body text instead, which is what it was meant to verify.
+
+## CLI and install
+
+- **Finding the vault:** `--vault PATH` on every command, then `$LIL_MEMORY_VAULT`, then `~/lil-memory`. `init [path]` also takes a positional path.
+- **Not in v0.1:** `serve --http` and `import` are left out of the CLI until v0.2, rather than shipped as stubs.
+- **What `install` registers:** the command it writes is the current Python, run as `python -m lil_memory serve --vault <path>`.
+  - The exception is when lil-memory is running from uvx's throwaway cache (`archive-v0`). Then it writes `uvx lil-memory serve ...`, which only works once the package is published on PyPI.
+- **Config locations:** checked against the official Claude Code MCP docs (code.claude.com/docs/en/mcp) on 2026-10-05.
+  - Claude Code: user scope is the top-level `mcpServers` object in `~/.claude.json`, or in `$CLAUDE_CONFIG_DIR/.claude.json` when that is set. `type: "stdio"` is required.
+  - Claude Desktop: `claude_desktop_config.json` under `~/Library/Application Support/Claude` (macOS) or `%APPDATA%\Claude` (Windows), with no `type` key.
+  - The Linux Desktop path (`~/.config/Claude`) comes only from third-party sources.
+- **Writing configs:** `install` refuses to touch a config that isn't a JSON object with an object-valued `mcpServers`. It writes a timestamped `.bak` next to the original before every change.
+  - Claude Code rewrites `~/.claude.json` while it runs, so installing while it is open can lose that write. The CLI tells the user to restart the client.
+- **Testing:** `tests/test_cli.py` points `HOME`, `APPDATA` and `CLAUDE_CONFIG_DIR` at a temporary directory for every test, and asserts this before each one.
+- **`source`:** the field records the MCP client's `clientInfo` name and version, such as `claude-code 2.1.0`. The server cannot see which model is calling it, so the brief's `claude-desktop / claude-opus-5.5` example cannot be produced as-is.
