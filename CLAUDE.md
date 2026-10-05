@@ -146,13 +146,13 @@ Every AI client starts its own server process, so several lil memory processes (
 ## Transports
 
 - v0.1: stdio only. This covers Claude Desktop, Claude Code, Cursor and most local clients.
-- v0.2: Streamable HTTP via `lil-memory serve --http`, bound to `127.0.0.1` only, requiring a bearer token generated at `init`. Document (do not build) how to expose it through a tunnel for clients that need a remote URL, such as ChatGPT, and state the security trade-off plainly in the README.
+- v0.2: Streamable HTTP via `lil-memory serve --http`, bound to `127.0.0.1` only, served at a secret URL (`/mcp/<128-bit secret>`, stored in `.lil-memory/http-secret`, replaced with `--rotate`); every other path returns 404. A secret URL rather than a bearer token, because ChatGPT connectors support only OAuth or no auth, not static tokens (see NOTES.md). Document (do not build) how to expose it through a tunnel for clients that need a remote URL, such as ChatGPT, and state the security trade-off plainly in the README.
 
 ## CLI
 
 ```
 lil-memory init [path]            # create vault + .lil-memory/, write config
-lil-memory serve [--http]         # run the MCP server (stdio default)
+lil-memory serve [--http]         # run the MCP server (stdio default; --http: secret URL, --rotate)
 lil-memory install <client>       # write MCP config for claude-desktop | claude-code | cursor
 lil-memory reindex                # rebuild the index from files
 lil-memory import chatgpt <file>  # export -> imports/chatgpt/*.md
@@ -193,7 +193,7 @@ scripts/bench.py
 
 **v0.1 — Usable core.** Vault format and SPEC.md, the six tools, the profile resource, the `load_context` prompt, FTS index with incremental refresh, stdio transport, `init`, `serve`, `reindex`, `doctor`, `install` for Claude Desktop and Claude Code. Done when: a memory saved in Claude Desktop is recalled in Claude Code, a memory edited in Obsidian is reflected in `recall` within 2 seconds, the concurrency tests pass, and the performance budgets pass.
 
-**v0.2 — Migration and reach.** ChatGPT and Claude importers, `distill_import` prompt, HTTP transport with token auth, `install` for Cursor. Done when: a real ChatGPT export imports without crashing and its conversations are findable via `recall`.
+**v0.2 — Migration and reach.** ChatGPT and Claude importers, `distill_import` prompt, HTTP transport at a secret URL, `install` for Cursor. Done when: a real ChatGPT export imports without crashing and its conversations are findable via `recall`.
 
 **v0.3 — Hygiene.** Optional inbox mode (agent writes land in `inbox/` as `pending` until the user moves them or approves via CLI), per-client read-only option, `lil-memory lint` to find duplicates, broken supersede links and malformed frontmatter.
 
