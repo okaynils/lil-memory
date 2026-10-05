@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/lil-memory-dark.svg">
+    <img src="docs/lil-memory-light.svg" alt="lil memory" width="50%">
+  </picture>
+</p>
+
 # lil memory
 
 Your AI memory as a folder of Markdown files. Works with any model. No account, no cloud, no company in the middle.
