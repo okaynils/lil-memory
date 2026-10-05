@@ -200,7 +200,7 @@ Readers MUST also accept the following formats. Values with no offset are read a
 - `YYYY-MM-DDTHH:MM:SS` and `YYYY-MM-DDTHH:MM`, which Obsidian writes for date-time properties
 - `YYYY-MM-DD`, read as midnight.
 
-Readers MUST treat any other value as missing.
+Readers MAY also accept other ISO 8601 forms. A value that a reader cannot parse is treated as missing.
 
 Hand edits do not update `updated`. For recency ranking, readers SHOULD therefore use the later of `updated` and the file's mtime.
 

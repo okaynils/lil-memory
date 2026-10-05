@@ -7,7 +7,10 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Nils Fahrni" }]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "mcp>=1.26,<2",
+    "pyyaml>=6.0.3",
+]
 
 [project.scripts]
 lil-memory = "lil_memory.cli:main"
