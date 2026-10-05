@@ -91,6 +91,14 @@ class Memory:
 # Paths and names
 
 
+def kind(path: str) -> bool | None:
+    """True for a memory file, False for another visible .md file, None if readers skip it."""
+    parts = path.split("/")
+    if any(p.startswith(".") for p in parts) or not path.lower().endswith(".md"):
+        return None
+    return len(parts) > 1 and parts[0] != "imports"
+
+
 def scan(root: Path) -> Iterator[tuple[str, os.stat_result, bool]]:
     """Yield (path, stat, is_memory) for every visible .md file in the vault (SPEC §2.1)."""
     stack = [("", str(root))]
@@ -106,8 +114,7 @@ def scan(root: Path) -> Iterator[tuple[str, os.stat_result, bool]]:
             rel = prefix + entry.name
             if entry.is_dir(follow_symlinks=False):
                 stack.append((rel + "/", entry.path))
-            elif entry.name.lower().endswith(".md") and entry.is_file():
-                memory = bool(prefix) and not rel.startswith("imports/")
+            elif (memory := kind(rel)) is not None and entry.is_file():
                 yield rel, entry.stat(), memory
 
 

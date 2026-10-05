@@ -26,3 +26,10 @@ Decisions and observations made during the v0.1 build that are worth a second lo
 - New memories are placed with `link(2)` from a temporary file, so a concurrent writer can never be overwritten (SPEC §9).
 - Filesystems without hard links (FAT/exFAT) are not supported. A fallback would have added code for a rare setup.
 - APFS, ext4, btrfs and NTFS all work.
+
+## Test corrections
+
+These were mistakes in tests while they were being written. No assertion was loosened.
+
+- `test_index.py::test_scopes_and_stats` expected 6 memories, but the setup creates 5: one, two, three (superseded), four, and broken.
+- `test_index.py::test_duplicate_ids_belong_to_the_first_path` copied into a `global/` folder that didn't exist yet.
