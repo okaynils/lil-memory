@@ -184,6 +184,7 @@ src/lil_memory/
     └── claude.py
 tests/
 docs/SPEC.md     # the file format spec
+docs/index.html  # the website: one plain HTML page, startup guide and docs
 scripts/bench.py
 ```
 
@@ -206,5 +207,6 @@ Anything not on this list needs the owner's approval first.
 - Every feature ships with tests. Test file-format behavior against real temp directories, not mocks.
 - Run `ruff check`, `ruff format` and `pytest` before declaring anything done.
 - If a change touches the file format, update `docs/SPEC.md` in the same change.
+- `docs/index.html` is the project website. Keep it in sync with the code in the same change: any change to the quickstart, CLI commands or flags, tools, file format, supported clients or security behaviour must be reflected there (and in the README). Keep it plain old-school HTML: no CSS framework, no JavaScript, no build step, no extra files besides the logo and `CNAME`. GitHub Pages serves `docs/` from `main` at https://lilmemory.nils.me, so every push to `main` deploys it.
 - Ask before adding a dependency, a tool, a config option, or a new top-level folder in the vault.
 - Keep the README short: pitch, 3-step quickstart, the file format at a glance, and the security note about HTTP exposure.

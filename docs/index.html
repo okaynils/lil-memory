@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lil memory</title>
+<meta name="description" content="Your AI memory as a folder of Markdown files. Works with any model.">
+<style>body { max-width: 42em; margin: 2em auto; padding: 0 1em; } pre { overflow-x: auto; }</style>
+</head>
+<body>
+
+<p><img src="lil-memory-light.svg" alt="lil memory" width="327" height="61"></p>
+
+<p><b>Your AI memory as a folder of Markdown files. Works with any model. No account, no cloud, no company in the middle.</b></p>
+
+<p>lil memory is a small local <a href="https://modelcontextprotocol.io">MCP</a> server.
+Every AI client you connect (Claude Desktop, Claude Code, and others) reads and writes the same memories.
+The memories are plain files in a folder you own, so you can read and edit them in
+<a href="https://obsidian.md">Obsidian</a> or any text editor.</p>
+
+<p>[ <a href="#quickstart">Quickstart</a>
+| <a href="#usage">Usage</a>
+| <a href="#format">File format</a>
+| <a href="#tools">Tools</a>
+| <a href="#cli">CLI</a>
+| <a href="#security">Security</a>
+| <a href="https://github.com/okaynils/lil-memory">Source</a> ]</p>
+
+<hr>
+
+<h2 id="quickstart">Quickstart</h2>
+
+<p>You need <a href="https://docs.astral.sh/uv/">uv</a>. Then:</p>
+
+<ol>
+<li>Create the vault at <code>~/lil-memory</code>:
+<pre>uvx lil-memory init</pre></li>
+<li>Connect a client (<code>claude-desktop</code> or <code>claude-code</code>):
+<pre>uvx lil-memory install claude-desktop</pre></li>
+<li>Restart the client and talk to it:
+<ul>
+<li>"Remember that I prefer British spelling."</li>
+<li>"Load my context for acme-site."</li>
+</ul></li>
+</ol>
+
+<p>Open <code>~/lil-memory</code> in Obsidian to see and edit your memories.
+Run <code>lil-memory doctor</code> if something does not work.</p>
+
+<h2 id="usage">Usage</h2>
+
+<p>You do not call lil memory yourself; your AI client does. Just ask in plain words:</p>
+
+<ul>
+<li><b>Save something:</b> "Remember that the acme-site deploys to Cloudflare."</li>
+<li><b>Find something:</b> "What do you know about my writing preferences?"</li>
+<li><b>Pick up where you left off:</b> "Load my context for acme-site." This loads your profile plus the latest memories for that project.</li>
+<li><b>Change something:</b> "Update that memory: we now deploy to Fly." The old version is kept, marked as superseded.</li>
+<li><b>Remove something:</b> "Forget the memory about my old address." It moves to the trash and can be restored by hand.</li>
+</ul>
+
+<p>Edits you make in Obsidian show up in searches within about 2 seconds.
+To keep the vault somewhere else, pass <code>--vault PATH</code> or set <code>$LIL_MEMORY_VAULT</code>.</p>
+
+<h2 id="format">File format</h2>
+
+<p>One memory is one Markdown file. Its folder is its scope.</p>
+
+<pre>
+~/lil-memory/
+├── global/prefers-british-spelling.md
+├── projects/acme-site/deploys-to-cloudflare.md
+└── .lil-memory/          # search index and trash; safe to delete the index
+</pre>
+
+<pre>
+---
+id: 01J9XK3M7Q2R8S5T6V7W8X9Y0Z
+type: preference
+status: active
+tags:
+  - writing
+source: claude-desktop 1.0
+created: 2026-10-05T09:12:00Z
+updated: 2026-10-05T09:12:00Z
+---
+Prefers British spelling and short paragraphs in client-facing copy.
+</pre>
+
+<ul>
+<li><code>type</code> is one of <code>fact</code>, <code>preference</code>, <code>project</code>, <code>decision</code>, <code>note</code>.</li>
+<li><code>status</code> is <code>active</code>, <code>pending</code> or <code>superseded</code>.</li>
+<li>Updating a memory never overwrites it. The old file is marked <code>superseded</code> and links to the new one.</li>
+<li>Forgetting a memory moves it to <code>.lil-memory/trash/</code>.</li>
+<li>Fields you add yourself in Obsidian are kept.</li>
+<li>The search index is a cache. Delete it any time; <code>lil-memory reindex</code> rebuilds it from the files.</li>
+</ul>
+
+<p>The full format is in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>. Other tools can implement it without reading the code.</p>
+
+<h2 id="tools">Tools</h2>
+
+<p>What the connected AI can use:</p>
+
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Name</th><th>What it does</th></tr>
+<tr><td><code>remember</code></td><td>Save one memory. Also returns up to 3 similar existing memories.</td></tr>
+<tr><td><code>recall</code></td><td>Full-text search over active memories, filtered by scope, type or tags.</td></tr>
+<tr><td><code>get</code></td><td>Fetch one memory by id, title or path.</td></tr>
+<tr><td><code>update</code></td><td>Replace a memory with new content; the old one is kept as superseded.</td></tr>
+<tr><td><code>forget</code></td><td>Move a memory to the trash.</td></tr>
+<tr><td><code>list_scopes</code></td><td>List folders with their number of memories.</td></tr>
+<tr><td><code>memory://profile</code></td><td>Resource: all your global preferences, the "who is this user" card.</td></tr>
+<tr><td><code>load_context</code></td><td>Prompt: your profile plus the latest memories in one scope.</td></tr>
+</table>
+
+<h2 id="cli">CLI</h2>
+
+<pre>
+lil-memory init [path]           create a vault (default ~/lil-memory)
+lil-memory install &lt;client&gt;      add to claude-desktop or claude-code
+lil-memory serve                 run the MCP server over stdio
+lil-memory serve --http          run at a secret URL on 127.0.0.1 (--port, --rotate)
+lil-memory reindex               rebuild the search index from the files
+lil-memory doctor                check FTS5, the vault and client installs
+</pre>
+
+<p>Every command takes <code>--vault PATH</code>.</p>
+
+<h2 id="security">Security</h2>
+
+<ul>
+<li><b>Local by default.</b> Claude Desktop and Claude Code start lil memory as a local process and talk to it over stdio. Nothing listens on the network.</li>
+<li><b>Memories are untrusted input.</b> Memories written by one AI are read by another, so stored text could try to give instructions.
+lil memory returns memories inside clearly marked <code>&lt;memory&gt;</code> blocks, labeled as data and not instructions. It never acts on their content itself.</li>
+<li><b>Remote clients such as ChatGPT</b> can only reach a server through an HTTPS URL, and cannot send a static token.
+So HTTP mode keeps things minimal: the URL itself is the secret. Use it with caution, because anyone who has the URL gets full access to your memories (see the trade-off below).</li>
+</ul>
+
+<pre>
+lil-memory serve --http                         # prints http://127.0.0.1:8765/mcp/&lt;secret&gt;
+cloudflared tunnel --url http://127.0.0.1:8765  # or any other tunnel
+</pre>
+
+<p>In ChatGPT, turn on developer mode in the settings, then add
+<code>https://&lt;tunnel-host&gt;/mcp/&lt;secret&gt;</code> as a custom connector with no authentication.</p>
+
+<p><b>The trade-off:</b> anyone who has that URL can read, change and forget all of your memories.
+A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider.
+OpenAI also stores it in your connector settings and sees every memory ChatGPT reads.
+HTTP mode only runs while you keep <code>serve --http</code> open.
+<code>lil-memory serve --http --rotate</code> replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked.</p>
+
+<hr>
+
+<p><small>lil memory is MIT licensed.</small></p>
+
+</body>
+</html>
