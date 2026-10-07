@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect lil memory</title>
+<meta name="description" content="Connect Claude, Codex, ChatGPT or any MCP client to lil memory, keep it running, and keep it safe.">
+<style>
+body { margin: 0; }
+.wrap { max-width: 42em; margin: 0 auto; padding: 0 1em; }
+header { background: #eee; border-bottom: 1px solid #ccc; padding: 1.5em 0 0.5em; }
+pre, table { display: block; overflow-x: auto; }
+img { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+
+<p><a href="./"><img src="lil-memory-light.svg" alt="lil memory" width="327" height="61"></a></p>
+
+<p>[ <a href="./">Home</a>
+| <b>Connect</b>
+| <a href="reference.html">Reference</a>
+| <a href="https://github.com/okaynils/lil-memory">Source</a> ]</p>
+
+</div></header>
+
+<main class="wrap">
+
+<h2 id="connect">Connect your AI</h2>
+
+<h3>Claude Desktop and Claude Code</h3>
+
+<pre>
+lil-memory install claude-desktop
+lil-memory install claude-code
+</pre>
+
+<p>Each command adds lil memory to that client's config, keeps every other server, and saves a backup of the old file next to it.
+Restart the client afterwards.</p>
+
+<h3>Codex</h3>
+
+<pre>
+lil-memory install codex
+</pre>
+
+<p>This adds a <code>[mcp_servers.lil-memory]</code> table to <code>~/.codex/config.toml</code> (or <code>$CODEX_HOME/config.toml</code>),
+keeping your other settings and comments, with a backup next to it.
+The Codex CLI and IDE extension read this file, and so does the ChatGPT desktop app, which runs Codex. Restart them afterwards, then check with <code>codex mcp list</code>.</p>
+
+<p>Codex does not show an MCP server's own instructions to the model, so it would not know to save memories unprompted. <code>install codex</code> therefore also adds a short, clearly marked lil memory block to your global <code>~/.codex/AGENTS.md</code>, which Codex reads in every session. The rest of that file is left alone, and running the command again only refreshes the block.</p>
+
+<h3>ChatGPT (web)</h3>
+
+<p>ChatGPT runs in the cloud, so it cannot start a program on your computer. It needs an HTTPS URL instead.
+Read <a href="#security">Security</a> first: anyone with that URL has full access to your memories.</p>
+
+<ol>
+<li>Start HTTP mode. It prints a local URL ending in <code>/mcp/&lt;secret&gt;</code>:
+<pre>lil-memory serve --http</pre></li>
+<li>Put a tunnel in front of it, in a second terminal:
+<pre>cloudflared tunnel --url http://127.0.0.1:8765</pre>
+This prints a public <code>https://...</code> host. It changes every time the tunnel restarts;
+for a fixed one, see <a href="#always-on">Run it all the time</a>.</li>
+<li>In ChatGPT, turn on developer mode. Where the switch is, and whether you have it, depends on your plan;
+see OpenAI's <a href="https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta">help article on developer mode</a>.</li>
+<li>Add a custom connector (OpenAI also calls these apps) with the URL <code>https://&lt;tunnel-host&gt;/mcp/&lt;secret&gt;</code>
+and no authentication.</li>
+<li>Turn the connector on in a chat and say "Load my context for acme-site."</li>
+</ol>
+
+<p>On some plans ChatGPT only allows tools that read. Then it can use <code>recall</code> and <code>get</code>,
+but not <code>remember</code>, <code>update</code> or <code>forget</code>.</p>
+
+<h3>Any other MCP client</h3>
+
+<p>Most local clients (IDEs, CLI agents, desktop apps) start MCP servers the same way: a command plus arguments.
+Point yours at the <code>lil-memory</code> program and the <code>serve</code> command. Many use this JSON shape:</p>
+
+<pre>
+{
+  "mcpServers": {
+    "lil-memory": {
+      "command": "/Users/you/.local/bin/lil-memory",
+      "args": ["serve"]
+    }
+  }
+}
+</pre>
+
+<ul>
+<li>Use the full path from <code>which lil-memory</code>. Apps opened from the Dock or Start menu often do not see your shell's <code>PATH</code>.</li>
+<li>Add <code>"--vault", "/path/to/vault"</code> to <code>args</code> if your vault is not at <code>~/lil-memory</code>.</li>
+<li>Look up where your client keeps this config in its own docs; the key is sometimes called <code>servers</code> or <code>context_servers</code> instead of <code>mcpServers</code>.</li>
+<li>If a client only accepts a URL, run <code>lil-memory serve --http</code> and give it <code>http://127.0.0.1:8765/mcp/&lt;secret&gt;</code>.
+A client on the same machine needs no tunnel.</li>
+</ul>
+
+<h2 id="always-on">Run it all the time</h2>
+
+<p><b>Local clients need nothing.</b> Claude Desktop, Claude Code and other local clients start lil memory themselves
+whenever they need it and stop it when they quit. There is no server to keep running.</p>
+
+<p><b>Only HTTP mode (ChatGPT) needs a process that stays up</b>, plus a tunnel in front of it.
+Two ways to set that up:</p>
+
+<ul>
+<li><b>On your laptop.</b> Simple, but ChatGPT cannot reach your memories while the laptop sleeps or is closed.</li>
+<li><b>On an always-on machine</b>, such as a Mac mini or a small Linux box. ChatGPT can reach it at any time.
+On a Mac, turn on "Prevent automatic sleeping when the display is off" in System Settings.</li>
+</ul>
+
+<h3>macOS: a launchd agent</h3>
+
+<p>Save this as <code>~/Library/LaunchAgents/lil-memory.plist</code>.
+Replace the first path with the output of <code>which uvx</code>, and add
+<code>&lt;string&gt;--vault&lt;/string&gt;&lt;string&gt;/path/to/vault&lt;/string&gt;</code>
+if your vault is not at <code>~/lil-memory</code>.</p>
+
+<pre>
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE plist PUBLIC &quot;-//Apple//DTD PLIST 1.0//EN&quot; &quot;http://www.apple.com/DTDs/PropertyList-1.0.dtd&quot;&gt;
+&lt;plist version=&quot;1.0&quot;&gt;
+&lt;dict&gt;
+  &lt;key&gt;Label&lt;/key&gt;&lt;string&gt;lil-memory&lt;/string&gt;
+  &lt;key&gt;ProgramArguments&lt;/key&gt;
+  &lt;array&gt;
+    &lt;string&gt;/Users/YOU/.local/bin/uvx&lt;/string&gt;
+    &lt;string&gt;lil-memory&lt;/string&gt;
+    &lt;string&gt;serve&lt;/string&gt;
+    &lt;string&gt;--http&lt;/string&gt;
+  &lt;/array&gt;
+  &lt;key&gt;RunAtLoad&lt;/key&gt;&lt;true/&gt;
+  &lt;key&gt;KeepAlive&lt;/key&gt;&lt;true/&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;
+</pre>
+
+<pre>
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/lil-memory.plist   # start now and at every login
+launchctl bootout gui/$(id -u)/lil-memory                                  # stop it
+</pre>
+
+<h3>Linux: a systemd user service</h3>
+
+<p>Save this as <code>~/.config/systemd/user/lil-memory.service</code>:</p>
+
+<pre>
+[Unit]
+Description=lil memory (HTTP mode)
+
+[Service]
+ExecStart=%h/.local/bin/uvx lil-memory serve --http
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+</pre>
+
+<pre>
+systemctl --user enable --now lil-memory   # start now and at every login
+loginctl enable-linger $USER                # keep it running without anyone logged in
+</pre>
+
+<h3>The URL and the tunnel</h3>
+
+<p>The secret URL stays the same across restarts. It is
+<code>http://127.0.0.1:8765/mcp/</code> followed by the contents of <code>~/lil-memory/.lil-memory/http-secret</code>.</p>
+
+<p>A quick tunnel (<code>cloudflared tunnel --url ...</code>) gets a new random hostname every time it starts,
+which breaks the ChatGPT connector. For a setup that runs all the time, use a tunnel with a fixed hostname,
+such as <a href="https://tailscale.com/kb/1223/funnel">Tailscale Funnel</a> or a
+<a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">named Cloudflare tunnel</a>,
+and run it as a service too. Both tools can install themselves as one.
+Everything in <a href="#security">Security</a> still applies.</p>
+
+<h3>Using the same vault on several machines</h3>
+
+<p>Sync the vault folder with Syncthing, iCloud Drive, Dropbox or git, and run lil memory on each machine.
+This is safe because the search index lives in each machine's cache folder, outside the vault.
+Two things to know:</p>
+
+<ul>
+<li>Keep <code>.lil-memory/http-secret</code> out of sync, for example with an ignore rule. Each machine that serves HTTP gets its own secret.</li>
+<li>If two machines change the same memory before syncing, your sync tool keeps both versions as a conflict copy. Nothing is lost, but you may need to tidy up by hand.</li>
+</ul>
+
+<h2 id="security">Security</h2>
+
+<ul>
+<li><b>Local by default.</b> Claude Desktop, Claude Code, Codex and other local clients start lil memory as a local process and talk to it over stdio. Nothing listens on the network.</li>
+<li><b>Memories are untrusted input.</b> Memories written by one AI are read by another, so stored text could try to give instructions.
+lil memory returns memories inside clearly marked <code>&lt;memory&gt;</code> blocks, labeled as data and not instructions. It never acts on their content itself.</li>
+<li><b>Remote clients such as ChatGPT</b> can only reach a server through an HTTPS URL, and cannot send a static token.
+So HTTP mode keeps things minimal: the URL itself is the secret. Use it with caution, because anyone who has the URL gets full access to your memories (see the trade-off below).</li>
+</ul>
+
+<p>The setup steps are under <a href="#connect">Connect your AI → ChatGPT</a>.</p>
+
+<p><b>The trade-off:</b> anyone who has that URL can read, change and forget all of your memories.
+A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider.
+OpenAI also stores it in your connector settings and sees every memory ChatGPT reads.
+HTTP mode only runs while you keep <code>serve --http</code> open.
+<code>lil-memory serve --http --rotate</code> replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked.</p>
+
+<hr>
+
+<p><small>lil memory is MIT licensed.</small></p>
+
+</main>
+
+</body>
+</html>

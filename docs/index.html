@@ -5,30 +5,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lil memory</title>
 <meta name="description" content="Your AI memory as a folder of Markdown files. Works with any model.">
-<style>body { max-width: 42em; margin: 2em auto; padding: 0 1em; } pre { overflow-x: auto; }</style>
+<style>
+body { margin: 0; }
+.wrap { max-width: 42em; margin: 0 auto; padding: 0 1em; }
+header { background: #eee; border-bottom: 1px solid #ccc; padding: 1.5em 0 0.5em; }
+pre, table { display: block; overflow-x: auto; }
+img { max-width: 100%; height: auto; }
+</style>
 </head>
 <body>
 
-<p><img src="lil-memory-light.svg" alt="lil memory" width="327" height="61"></p>
+<header><div class="wrap">
+
+<p><a href="./"><img src="lil-memory-light.svg" alt="lil memory" width="327" height="61"></a></p>
 
 <p><b>Your AI memory as a folder of Markdown files. Works with any model. No account, no cloud, no company in the middle.</b></p>
 
 <p>lil memory is a small local <a href="https://modelcontextprotocol.io">MCP</a> server.
-Every AI client you connect (Claude Desktop, Claude Code, and others) reads and writes the same memories.
+Every AI client you connect (Claude Desktop, Claude Code, Codex, ChatGPT and others) reads and writes the same memories.
 The memories are plain files in a folder you own, so you can read and edit them in
 <a href="https://obsidian.md">Obsidian</a> or any text editor.</p>
 
-<p>[ <a href="#quickstart">Quickstart</a>
-| <a href="#connect">Connect</a>
-| <a href="#usage">Usage</a>
-| <a href="#format">File format</a>
-| <a href="#tools">Tools</a>
-| <a href="#cli">CLI</a>
-| <a href="#always-on">Always on</a>
-| <a href="#security">Security</a>
+<p>[ <b>Home</b>
+| <a href="connect.html">Connect</a>
+| <a href="reference.html">Reference</a>
 | <a href="https://github.com/okaynils/lil-memory">Source</a> ]</p>
 
-<hr>
+</div></header>
+
+<main class="wrap">
+
+<h2 id="why">Why lil memory</h2>
+
+<p>Most people now use more than one AI: Claude in the morning, a coding agent in the afternoon, ChatGPT on the go.
+Each one keeps its own memory, on its own company's servers, and none of them knows what the others learned.
+lil memory is one memory that all of them share, and it lives with you.</p>
+
+<ul>
+<li><b>Yours, as plain files.</b> One Markdown file per memory, in a folder you own.
+Read it, edit it, search it, sync it or put it in git. There is nothing to export and nothing to be locked into.</li>
+<li><b>Every AI, the same memory.</b> Claude Desktop, Claude Code, Codex, ChatGPT and any other MCP client can use it at the same time.
+Tell one of them something and the others know it too.</li>
+<li><b>Obsidian is the interface.</b> Memories are linked notes. Browse the graph, fix a memory by hand,
+and your AI sees the change within two seconds.</li>
+<li><b>Small and boring on purpose.</b> One small Python program with two dependencies.
+No account, no cloud, no API keys, no background service and no AI model of its own.
+The whole core is about 1,400 lines you can read in an afternoon. It starts in under half a second
+and searches 10,000 memories in about 10 ms.</li>
+<li><b>An open format.</b> The file format is written down in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>,
+so other tools can read and write your memories, and they outlive this project.</li>
+</ul>
+
+<h3>How it compares</h3>
+
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th></th><th>Where your memory lives</th><th>Shared across AIs</th><th>Edit by hand</th><th>What you need</th></tr>
+<tr><td>Built-in memory (ChatGPT, Claude, Gemini)</td><td>The provider's servers</td><td>No. Each keeps its own; imports are one-time copies that drift apart</td><td>In that app's settings</td><td>Nothing</td></tr>
+<tr><td>Hosted memory services</td><td>The service's cloud</td><td>Yes, through their API or MCP</td><td>In their dashboard</td><td>An account and an API key</td></tr>
+<tr><td>Self-hosted memory stacks, such as <a href="https://mem0.ai/openmemory">OpenMemory</a></td><td>Databases on your machine</td><td>Yes, through MCP</td><td>In a web UI</td><td>Docker, Postgres, a vector database and an LLM API key</td></tr>
+<tr><td>The <a href="https://github.com/modelcontextprotocol/servers/tree/main/src/memory">reference MCP memory server</a></td><td>One JSON Lines file on your machine</td><td>Yes, through MCP</td><td>Possible, but it is a graph stored as JSON</td><td>Node.js</td></tr>
+<tr><td><a href="https://github.com/basicmachines-co/basic-memory">Basic Memory</a></td><td>Markdown files on your machine</td><td>Yes, through MCP</td><td>Yes, in Obsidian or any editor</td><td>A Python program (AGPL), with optional cloud sync</td></tr>
+<tr><td><b>lil memory</b></td><td><b>Markdown files on your machine</b></td><td><b>Yes, through MCP</b></td><td><b>Yes, in Obsidian or any editor</b></td><td><b>One small Python program (MIT)</b></td></tr>
+</table>
+
+<p>Basic Memory is the closest relative and a good project. If you want a fuller knowledge-management system, look at it.
+lil memory does less on purpose: six tools, a fixed file format with a written spec, and a permissive license.</p>
+
+<h3>When something else fits better</h3>
+
+<ul>
+<li>You only use one AI and are happy with it. Its built-in memory is less work.</li>
+<li>You need search by meaning rather than by words. lil memory uses full-text search only; there are no embeddings.</li>
+<li>You want one memory for a whole team. lil memory is built for one person.</li>
+</ul>
 
 <h2 id="quickstart">Quickstart</h2>
 
@@ -37,7 +86,7 @@ The memories are plain files in a folder you own, so you can read and edit them 
 <ol>
 <li>Create the vault at <code>~/lil-memory</code>:
 <pre>uvx lil-memory init</pre></li>
-<li>Connect a client (<code>claude-desktop</code>, <code>claude-code</code> or <code>codex</code>; for others see <a href="#connect">Connect your AI</a>):
+<li>Connect a client (<code>claude-desktop</code>, <code>claude-code</code> or <code>codex</code>; for others see <a href="connect.html">Connect your AI</a>):
 <pre>uvx lil-memory install claude-desktop</pre></li>
 <li>Restart the client and talk to it:
 <ul>
@@ -50,76 +99,6 @@ The memories are plain files in a folder you own, so you can read and edit them 
 The first time, Obsidian asks you to pick the vault folder once ("Open folder as vault"); after that the command goes straight there.
 Without Obsidian, it opens the folder in your file manager.
 Run <code>lil-memory doctor</code> if something does not work.</p>
-
-<h2 id="connect">Connect your AI</h2>
-
-<h3>Claude Desktop and Claude Code</h3>
-
-<pre>
-lil-memory install claude-desktop
-lil-memory install claude-code
-</pre>
-
-<p>Each command adds lil memory to that client's config, keeps every other server, and saves a backup of the old file next to it.
-Restart the client afterwards.</p>
-
-<h3>Codex</h3>
-
-<pre>
-lil-memory install codex
-</pre>
-
-<p>This adds a <code>[mcp_servers.lil-memory]</code> table to <code>~/.codex/config.toml</code> (or <code>$CODEX_HOME/config.toml</code>),
-keeping your other settings and comments, with a backup next to it.
-The Codex CLI and IDE extension read this file, and so does the ChatGPT desktop app, which runs Codex. Restart them afterwards, then check with <code>codex mcp list</code>.</p>
-
-<p>Codex does not show an MCP server's own instructions to the model, so it would not know to save memories unprompted. <code>install codex</code> therefore also adds a short, clearly marked lil memory block to your global <code>~/.codex/AGENTS.md</code>, which Codex reads in every session. The rest of that file is left alone, and running the command again only refreshes the block.</p>
-
-<h3>ChatGPT (web)</h3>
-
-<p>ChatGPT runs in the cloud, so it cannot start a program on your computer. It needs an HTTPS URL instead.
-Read <a href="#security">Security</a> first: anyone with that URL has full access to your memories.</p>
-
-<ol>
-<li>Start HTTP mode. It prints a local URL ending in <code>/mcp/&lt;secret&gt;</code>:
-<pre>lil-memory serve --http</pre></li>
-<li>Put a tunnel in front of it, in a second terminal:
-<pre>cloudflared tunnel --url http://127.0.0.1:8765</pre>
-This prints a public <code>https://...</code> host. It changes every time the tunnel restarts;
-for a fixed one, see <a href="#always-on">Run it all the time</a>.</li>
-<li>In ChatGPT, turn on developer mode. Where the switch is, and whether you have it, depends on your plan;
-see OpenAI's <a href="https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta">help article on developer mode</a>.</li>
-<li>Add a custom connector (OpenAI also calls these apps) with the URL <code>https://&lt;tunnel-host&gt;/mcp/&lt;secret&gt;</code>
-and no authentication.</li>
-<li>Turn the connector on in a chat and say "Load my context for acme-site."</li>
-</ol>
-
-<p>On some plans ChatGPT only allows tools that read. Then it can use <code>recall</code> and <code>get</code>,
-but not <code>remember</code>, <code>update</code> or <code>forget</code>.</p>
-
-<h3>Any other MCP client</h3>
-
-<p>Most local clients (IDEs, CLI agents, desktop apps) start MCP servers the same way: a command plus arguments.
-Point yours at the <code>lil-memory</code> program and the <code>serve</code> command. Many use this JSON shape:</p>
-
-<pre>
-{
-  "mcpServers": {
-    "lil-memory": {
-      "command": "/Users/you/.local/bin/lil-memory",
-      "args": ["serve"]
-    }
-  }
-}
-</pre>
-
-<ul>
-<li>Use the full path from <code>which lil-memory</code>. Apps opened from the Dock or Start menu often do not see your shell's <code>PATH</code>.</li>
-<li>Add <code>"--vault", "/path/to/vault"</code> to <code>args</code> if your vault is not at <code>~/lil-memory</code>.</li>
-<li>Look up where your client keeps this config in its own docs; the key is sometimes called <code>servers</code> or <code>context_servers</code> instead of <code>mcpServers</code>.</li>
-<li>If a client only accepts a URL, run <code>lil-memory serve --http</code> and give it <code>http://127.0.0.1:8765/mcp/&lt;secret&gt;</code>.
-A client on the same machine needs no tunnel.</li>
-</ul>
 
 <h2 id="usage">Usage</h2>
 
@@ -158,182 +137,11 @@ starts, and remember preferences, corrections and decisions as soon as I state t
 <p>Edits you make in Obsidian show up in searches within about 2 seconds.
 To keep the vault somewhere else, pass <code>--vault PATH</code> or set <code>$LIL_MEMORY_VAULT</code>.</p>
 
-<h2 id="format">File format</h2>
-
-<p>One memory is one Markdown file. Its folder is its scope.</p>
-
-<pre>
-~/lil-memory/
-├── global/prefers-british-spelling.md
-├── projects/acme-site/deploys-to-cloudflare.md
-└── .lil-memory/          # config and trash
-</pre>
-
-<pre>
----
-id: 01J9XK3M7Q2R8S5T6V7W8X9Y0Z
-type: preference
-status: active
-tags:
-  - writing
-source: claude-desktop 1.0
-created: 2026-10-05T09:12:00Z
-updated: 2026-10-05T09:12:00Z
----
-Prefers British spelling and short paragraphs in client-facing copy.
-</pre>
-
-<ul>
-<li><code>type</code> is one of <code>fact</code>, <code>preference</code>, <code>project</code>, <code>decision</code>, <code>note</code>.</li>
-<li><code>status</code> is <code>active</code>, <code>pending</code> or <code>superseded</code>.</li>
-<li>Updating a memory never overwrites it. The old file is marked <code>superseded</code> and links to the new one.</li>
-<li>Forgetting a memory moves it to <code>.lil-memory/trash/</code>.</li>
-<li>Fields you add yourself in Obsidian are kept.</li>
-<li>The search index is a cache in your user cache folder, not in the vault, so syncing the vault is safe. <code>lil-memory doctor</code> shows where it is; <code>lil-memory reindex</code> rebuilds it from the files.</li>
-</ul>
-
-<p>The full format is in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>. Other tools can implement it without reading the code.</p>
-
-<h2 id="tools">Tools</h2>
-
-<p>What the connected AI can use:</p>
-
-<table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Name</th><th>What it does</th></tr>
-<tr><td><code>remember</code></td><td>Save one memory under a short title, linked to related memories with <code>[[wikilinks]]</code>. Also returns up to 3 similar existing memories.</td></tr>
-<tr><td><code>recall</code></td><td>Full-text search over active memories, filtered by scope, type or tags.</td></tr>
-<tr><td><code>get</code></td><td>Fetch one memory by id, title or path.</td></tr>
-<tr><td><code>update</code></td><td>Replace a memory with new content; the old one is kept as superseded.</td></tr>
-<tr><td><code>forget</code></td><td>Move a memory to the trash.</td></tr>
-<tr><td><code>list_scopes</code></td><td>List folders with their number of memories.</td></tr>
-<tr><td><code>memory://profile</code></td><td>Resource: all your global preferences, the "who is this user" card.</td></tr>
-<tr><td><code>load_context</code></td><td>Prompt: your profile plus the latest memories in one scope.</td></tr>
-</table>
-
-<h2 id="cli">CLI</h2>
-
-<pre>
-lil-memory init [path]           create a vault (default ~/lil-memory)
-lil-memory install &lt;client&gt;      add to claude-desktop, claude-code or codex
-lil-memory open                  explore your memories in Obsidian
-lil-memory serve                 run the MCP server over stdio
-lil-memory serve --http          run at a secret URL on 127.0.0.1 (--port, --rotate)
-lil-memory reindex               rebuild the search index from the files
-lil-memory doctor                check FTS5, the vault and client installs
-</pre>
-
-<p>Every command takes <code>--vault PATH</code>.</p>
-
-<h2 id="always-on">Run it all the time</h2>
-
-<p><b>Local clients need nothing.</b> Claude Desktop, Claude Code and other local clients start lil memory themselves
-whenever they need it and stop it when they quit. There is no server to keep running.</p>
-
-<p><b>Only HTTP mode (ChatGPT) needs a process that stays up</b>, plus a tunnel in front of it.
-Two ways to set that up:</p>
-
-<ul>
-<li><b>On your laptop.</b> Simple, but ChatGPT cannot reach your memories while the laptop sleeps or is closed.</li>
-<li><b>On an always-on machine</b>, such as a Mac mini or a small Linux box. ChatGPT can reach it at any time.
-On a Mac, turn on "Prevent automatic sleeping when the display is off" in System Settings.</li>
-</ul>
-
-<h3>macOS: a launchd agent</h3>
-
-<p>Save this as <code>~/Library/LaunchAgents/lil-memory.plist</code>.
-Replace the first path with the output of <code>which uvx</code>, and add
-<code>&lt;string&gt;--vault&lt;/string&gt;&lt;string&gt;/path/to/vault&lt;/string&gt;</code>
-if your vault is not at <code>~/lil-memory</code>.</p>
-
-<pre>
-&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
-&lt;!DOCTYPE plist PUBLIC &quot;-//Apple//DTD PLIST 1.0//EN&quot; &quot;http://www.apple.com/DTDs/PropertyList-1.0.dtd&quot;&gt;
-&lt;plist version=&quot;1.0&quot;&gt;
-&lt;dict&gt;
-  &lt;key&gt;Label&lt;/key&gt;&lt;string&gt;lil-memory&lt;/string&gt;
-  &lt;key&gt;ProgramArguments&lt;/key&gt;
-  &lt;array&gt;
-    &lt;string&gt;/Users/YOU/.local/bin/uvx&lt;/string&gt;
-    &lt;string&gt;lil-memory&lt;/string&gt;
-    &lt;string&gt;serve&lt;/string&gt;
-    &lt;string&gt;--http&lt;/string&gt;
-  &lt;/array&gt;
-  &lt;key&gt;RunAtLoad&lt;/key&gt;&lt;true/&gt;
-  &lt;key&gt;KeepAlive&lt;/key&gt;&lt;true/&gt;
-&lt;/dict&gt;
-&lt;/plist&gt;
-</pre>
-
-<pre>
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/lil-memory.plist   # start now and at every login
-launchctl bootout gui/$(id -u)/lil-memory                                  # stop it
-</pre>
-
-<h3>Linux: a systemd user service</h3>
-
-<p>Save this as <code>~/.config/systemd/user/lil-memory.service</code>:</p>
-
-<pre>
-[Unit]
-Description=lil memory (HTTP mode)
-
-[Service]
-ExecStart=%h/.local/bin/uvx lil-memory serve --http
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-</pre>
-
-<pre>
-systemctl --user enable --now lil-memory   # start now and at every login
-loginctl enable-linger $USER                # keep it running without anyone logged in
-</pre>
-
-<h3>The URL and the tunnel</h3>
-
-<p>The secret URL stays the same across restarts. It is
-<code>http://127.0.0.1:8765/mcp/</code> followed by the contents of <code>~/lil-memory/.lil-memory/http-secret</code>.</p>
-
-<p>A quick tunnel (<code>cloudflared tunnel --url ...</code>) gets a new random hostname every time it starts,
-which breaks the ChatGPT connector. For a setup that runs all the time, use a tunnel with a fixed hostname,
-such as <a href="https://tailscale.com/kb/1223/funnel">Tailscale Funnel</a> or a
-<a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">named Cloudflare tunnel</a>,
-and run it as a service too. Both tools can install themselves as one.
-Everything in <a href="#security">Security</a> still applies.</p>
-
-<h3>Using the same vault on several machines</h3>
-
-<p>Sync the vault folder with Syncthing, iCloud Drive, Dropbox or git, and run lil memory on each machine.
-This is safe because the search index lives in each machine's cache folder, outside the vault.
-Two things to know:</p>
-
-<ul>
-<li>Keep <code>.lil-memory/http-secret</code> out of sync, for example with an ignore rule. Each machine that serves HTTP gets its own secret.</li>
-<li>If two machines change the same memory before syncing, your sync tool keeps both versions as a conflict copy. Nothing is lost, but you may need to tidy up by hand.</li>
-</ul>
-
-<h2 id="security">Security</h2>
-
-<ul>
-<li><b>Local by default.</b> Claude Desktop, Claude Code, Codex and other local clients start lil memory as a local process and talk to it over stdio. Nothing listens on the network.</li>
-<li><b>Memories are untrusted input.</b> Memories written by one AI are read by another, so stored text could try to give instructions.
-lil memory returns memories inside clearly marked <code>&lt;memory&gt;</code> blocks, labeled as data and not instructions. It never acts on their content itself.</li>
-<li><b>Remote clients such as ChatGPT</b> can only reach a server through an HTTPS URL, and cannot send a static token.
-So HTTP mode keeps things minimal: the URL itself is the secret. Use it with caution, because anyone who has the URL gets full access to your memories (see the trade-off below).</li>
-</ul>
-
-<p>The setup steps are under <a href="#connect">Connect your AI → ChatGPT</a>.</p>
-
-<p><b>The trade-off:</b> anyone who has that URL can read, change and forget all of your memories.
-A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider.
-OpenAI also stores it in your connector settings and sees every memory ChatGPT reads.
-HTTP mode only runs while you keep <code>serve --http</code> open.
-<code>lil-memory serve --http --rotate</code> replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked.</p>
-
 <hr>
 
 <p><small>lil memory is MIT licensed.</small></p>
+
+</main>
 
 </body>
 </html>

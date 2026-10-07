@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lil memory reference</title>
+<meta name="description" content="The lil memory file format, MCP tools and command line.">
+<style>
+body { margin: 0; }
+.wrap { max-width: 42em; margin: 0 auto; padding: 0 1em; }
+header { background: #eee; border-bottom: 1px solid #ccc; padding: 1.5em 0 0.5em; }
+pre, table { display: block; overflow-x: auto; }
+img { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+
+<p><a href="./"><img src="lil-memory-light.svg" alt="lil memory" width="327" height="61"></a></p>
+
+<p>[ <a href="./">Home</a>
+| <a href="connect.html">Connect</a>
+| <b>Reference</b>
+| <a href="https://github.com/okaynils/lil-memory">Source</a> ]</p>
+
+</div></header>
+
+<main class="wrap">
+
+<h2 id="format">File format</h2>
+
+<p>One memory is one Markdown file. Its folder is its scope.</p>
+
+<pre>
+~/lil-memory/
+├── global/prefers-british-spelling.md
+├── projects/acme-site/deploys-to-cloudflare.md
+└── .lil-memory/          # config and trash
+</pre>
+
+<pre>
+---
+id: 01J9XK3M7Q2R8S5T6V7W8X9Y0Z
+type: preference
+status: active
+tags:
+  - writing
+source: claude-desktop 1.0
+created: 2026-10-05T09:12:00Z
+updated: 2026-10-05T09:12:00Z
+---
+Prefers British spelling and short paragraphs in client-facing copy.
+</pre>
+
+<ul>
+<li><code>type</code> is one of <code>fact</code>, <code>preference</code>, <code>project</code>, <code>decision</code>, <code>note</code>.</li>
+<li><code>status</code> is <code>active</code>, <code>pending</code> or <code>superseded</code>.</li>
+<li>Updating a memory never overwrites it. The old file is marked <code>superseded</code> and links to the new one.</li>
+<li>Forgetting a memory moves it to <code>.lil-memory/trash/</code>.</li>
+<li>Fields you add yourself in Obsidian are kept.</li>
+<li>The search index is a cache in your user cache folder, not in the vault, so syncing the vault is safe. <code>lil-memory doctor</code> shows where it is; <code>lil-memory reindex</code> rebuilds it from the files.</li>
+</ul>
+
+<p>The full format is in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>. Other tools can implement it without reading the code.</p>
+
+<h2 id="tools">Tools</h2>
+
+<p>What the connected AI can use:</p>
+
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Name</th><th>What it does</th></tr>
+<tr><td><code>remember</code></td><td>Save one memory under a short title, linked to related memories with <code>[[wikilinks]]</code>. Also returns up to 3 similar existing memories.</td></tr>
+<tr><td><code>recall</code></td><td>Full-text search over active memories, filtered by scope, type or tags.</td></tr>
+<tr><td><code>get</code></td><td>Fetch one memory by id, title or path.</td></tr>
+<tr><td><code>update</code></td><td>Replace a memory with new content; the old one is kept as superseded.</td></tr>
+<tr><td><code>forget</code></td><td>Move a memory to the trash.</td></tr>
+<tr><td><code>list_scopes</code></td><td>List folders with their number of memories.</td></tr>
+<tr><td><code>memory://profile</code></td><td>Resource: all your global preferences, the "who is this user" card.</td></tr>
+<tr><td><code>load_context</code></td><td>Prompt: your profile plus the latest memories in one scope.</td></tr>
+</table>
+
+<h2 id="cli">CLI</h2>
+
+<pre>
+lil-memory init [path]           create a vault (default ~/lil-memory)
+lil-memory install &lt;client&gt;      add to claude-desktop, claude-code or codex
+lil-memory open                  explore your memories in Obsidian
+lil-memory serve                 run the MCP server over stdio
+lil-memory serve --http          run at a secret URL on 127.0.0.1 (--port, --rotate)
+lil-memory reindex               rebuild the search index from the files
+lil-memory doctor                check FTS5, the vault and client installs
+</pre>
+
+<p>Every command takes <code>--vault PATH</code>.</p>
+
+<hr>
+
+<p><small>lil memory is MIT licensed.</small></p>
+
+</main>
+
+</body>
+</html>

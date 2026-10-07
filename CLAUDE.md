@@ -187,7 +187,7 @@ src/lil_memory/
     └── claude.py
 tests/
 docs/SPEC.md     # the file format spec
-docs/index.html  # the website: one plain HTML page, startup guide and docs
+docs/*.html      # the website: index, connect and reference pages, plain HTML
 scripts/bench.py
 ```
 
@@ -210,6 +210,6 @@ Anything not on this list needs the owner's approval first.
 - Every feature ships with tests. Test file-format behavior against real temp directories, not mocks.
 - Run `ruff check`, `ruff format` and `pytest` before declaring anything done.
 - If a change touches the file format, update `docs/SPEC.md` in the same change.
-- `docs/index.html` is the project website. Keep it in sync with the code in the same change: any change to the quickstart, CLI commands or flags, tools, file format, supported clients or security behaviour must be reflected there (and in the README). Keep it plain old-school HTML: no CSS framework, no JavaScript, no build step, no extra files besides the logo and `CNAME`. GitHub Pages serves `docs/` from `main` at https://lilmemory.nils.me, so every push to `main` deploys it.
+- `docs/*.html` is the project website: `index.html` (pitch, why, quickstart, usage), `connect.html` (clients, always-on, security) and `reference.html` (file format, tools, CLI). Keep it in sync with the code in the same change: any change to the quickstart, CLI commands or flags, tools, file format, supported clients or security behaviour must be reflected there (and in the README). Keep it plain old-school HTML: a few lines of inline CSS at most, no CSS framework, no JavaScript, no build step, no extra files besides the pages, the logo and `CNAME`. Add a page only when a section clearly stands on its own. GitHub Pages serves `docs/` from `main` at https://lilmemory.nils.me, so every push to `main` deploys it.
 - Ask before adding a dependency, a tool, a config option, or a new top-level folder in the vault.
-- Keep the README short: pitch, 3-step quickstart, the file format at a glance, and the security note about HTTP exposure.
+- Keep the README short: pitch, why lil memory (with the comparison table), 3-step quickstart, the file format at a glance, and the security note about HTTP exposure.
