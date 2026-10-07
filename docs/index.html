@@ -73,6 +73,8 @@ lil-memory install codex
 keeping your other settings and comments, with a backup next to it.
 The Codex CLI and IDE extension read this file, and so does the ChatGPT desktop app, which runs Codex. Restart them afterwards, then check with <code>codex mcp list</code>.</p>
 
+<p>Codex does not show an MCP server's own instructions to the model, so it would not know to save memories unprompted. <code>install codex</code> therefore also adds a short, clearly marked lil memory block to your global <code>~/.codex/AGENTS.md</code>, which Codex reads in every session. The rest of that file is left alone, and running the command again only refreshes the block.</p>
+
 <h3>ChatGPT (web)</h3>
 
 <p>ChatGPT runs in the cloud, so it cannot start a program on your computer. It needs an HTTPS URL instead.

@@ -401,3 +401,46 @@ def test_open_reports_a_failing_launcher(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(cli, "launch", broken)
     assert main(["open", "--vault", str(root)]) == 1
     assert "could not open" in capsys.readouterr().err
+
+
+def test_install_codex_adds_instructions_to_global_agents_md(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    agents = tmp_path / "home/.codex/AGENTS.md"
+    agents.parent.mkdir(parents=True)
+    agents.write_text("# My rules\n\nBe brief.\n")
+    capsys.readouterr()
+    assert main(["install", "codex", "--vault", str(root)]) == 0
+    out = capsys.readouterr().out
+    assert f"Added lil-memory to {agents} (backup: AGENTS.md." in out
+    text = agents.read_text()
+    assert text.startswith("# My rules\n\nBe brief.\n\n<!-- lil-memory:start -->\n")
+    assert text.endswith("<!-- lil-memory:end -->\n")
+    assert "without being asked" in text and "recall, remember, update" in text
+    # Reinstalling keeps one block and leaves the user's text alone; no change, no backup.
+    assert main(["install", "codex", "--vault", str(root)]) == 0
+    assert agents.read_text() == text
+    assert len(list(agents.parent.glob("AGENTS.md.*.bak"))) == 1
+
+
+def test_install_codex_replaces_an_outdated_block_in_place(tmp_path):
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text(
+        "top\n\n<!-- lil-memory:start -->\nold advice\n<!-- lil-memory:end -->\n\nbottom\n"
+    )
+    install.install_instructions(agents, "new advice")
+    text = agents.read_text()
+    assert text.startswith("top\n\n<!-- lil-memory:start -->\n")
+    assert text.endswith("new advice\n<!-- lil-memory:end -->\n\nbottom\n")
+    assert "old advice" not in text
+
+
+def test_install_codex_refuses_a_damaged_block(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    agents = tmp_path / "home/.codex/AGENTS.md"
+    agents.parent.mkdir(parents=True)
+    agents.write_text("<!-- lil-memory:start -->\nhalf a block\n")
+    assert main(["install", "codex", "--vault", str(root)]) == 1
+    assert "damaged" in capsys.readouterr().err
+    assert agents.read_text() == "<!-- lil-memory:start -->\nhalf a block\n"

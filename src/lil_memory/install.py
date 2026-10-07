@@ -103,28 +103,63 @@ def render(path: Path, text: str, data: dict, entry: dict) -> str:
     return new
 
 
+def write(path: Path, text: str) -> Path | None:
+    """Atomically replace a file, keeping a timestamped backup of the old one. Returns it."""
+    backup = None
+    if path.exists():
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        backup = path.with_name(f"{path.name}.{stamp}.bak")
+        shutil.copy2(path, backup)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        if backup:
+            shutil.copymode(backup, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+    return backup
+
+
 def install(client: str, vault: Path, config: Path | None = None) -> tuple[Path, Path | None]:
     """Add or replace our server entry, keeping every other key. Returns (config, backup)."""
     config = config or CLIENTS[client]()
     text, data = load(config)  # raises before anything is written
-    output = render(config, text, data, entry(client, vault))
-    backup = None
-    if config.exists():
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        backup = config.with_name(f"{config.name}.{stamp}.bak")
-        shutil.copy2(config, backup)
-    config.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=f".{config.name}.", dir=config.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(output)
-        if backup:
-            shutil.copymode(backup, tmp)
-        os.replace(tmp, config)
-    except BaseException:
-        os.unlink(tmp)
-        raise
-    return config, backup
+    return config, write(config, render(config, text, data, entry(client, vault)))
+
+
+START, END = "<!-- lil-memory:start -->", "<!-- lil-memory:end -->"
+
+
+def install_instructions(path: Path, instructions: str) -> tuple[Path, Path | None]:
+    """Put our usage instructions in an always-loaded instruction file such as Codex's global
+    AGENTS.md, for clients that do not pass MCP server instructions on to the model.
+    Only the marked block is ours; the rest of the file is left as it is."""
+    block = "\n".join(
+        [
+            START,
+            "## lil memory",
+            "",
+            "These come from the lil-memory MCP server (`lil-memory install codex` rewrites this "
+            "block). Its tools are recall, remember, update, forget, get and list_scopes; "
+            "search for them if they are not loaded yet.",
+            "",
+            instructions.strip(),
+            END,
+        ]
+    )
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    if text.count(START) == text.count(END) == 1 and text.index(START) < text.index(END):
+        before, rest = text.split(START)
+        new = before + block + rest.split(END, 1)[1]
+    elif START in text or END in text:
+        raise ValueError(f"the lil-memory block in {path} is damaged; remove it and try again")
+    else:
+        new = (text.rstrip() + "\n\n" if text.strip() else "") + block + "\n"
+    return path, (write(path, new) if new != text else None)
 
 
 def installed(client: str, config: Path | None = None) -> dict | None:

@@ -136,10 +136,16 @@ def cmd_install(args: argparse.Namespace) -> int:
     if read_config(root) is None:
         return no_vault(root)
     try:
-        config, backup = install.install(args.client, root)
+        done = [install.install(args.client, root)]
+        if args.client == "codex":  # Codex does not show MCP server instructions to the model
+            from lil_memory.server import INSTRUCTIONS
+
+            agents = install.codex_config().with_name("AGENTS.md")
+            done.append(install.install_instructions(agents, INSTRUCTIONS))
     except (OSError, ValueError) as e:
         return fail(str(e))
-    print(f"Added lil-memory to {config}" + (f" (backup: {backup.name})" if backup else ""))
+    for path, backup in done:
+        print(f"Added lil-memory to {path}" + (f" (backup: {backup.name})" if backup else ""))
     print(f"Restart {args.client} to load it.")
     return 0
 
