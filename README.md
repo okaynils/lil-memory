@@ -34,7 +34,7 @@ One memory is one Markdown file. Its folder is its scope.
 ~/lil-memory/
 ├── global/prefers-british-spelling.md
 ├── projects/acme-site/deploys-to-cloudflare.md
-└── .lil-memory/          # search index and trash; safe to delete the index
+└── .lil-memory/          # config and trash
 ```
 
 ```markdown

@@ -70,7 +70,7 @@ To keep the vault somewhere else, pass <code>--vault PATH</code> or set <code>$L
 ~/lil-memory/
 ├── global/prefers-british-spelling.md
 ├── projects/acme-site/deploys-to-cloudflare.md
-└── .lil-memory/          # search index and trash; safe to delete the index
+└── .lil-memory/          # config and trash
 </pre>
 
 <pre>
@@ -93,7 +93,7 @@ Prefers British spelling and short paragraphs in client-facing copy.
 <li>Updating a memory never overwrites it. The old file is marked <code>superseded</code> and links to the new one.</li>
 <li>Forgetting a memory moves it to <code>.lil-memory/trash/</code>.</li>
 <li>Fields you add yourself in Obsidian are kept.</li>
-<li>The search index is a cache. Delete it any time; <code>lil-memory reindex</code> rebuilds it from the files.</li>
+<li>The search index is a cache in your user cache folder, not in the vault, so syncing the vault is safe. <code>lil-memory doctor</code> shows where it is; <code>lil-memory reindex</code> rebuilds it from the files.</li>
 </ul>
 
 <p>The full format is in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>. Other tools can implement it without reading the code.</p>

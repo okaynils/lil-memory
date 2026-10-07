@@ -38,8 +38,15 @@ def test_fts5_is_available():
     index_mod.check_fts5()
 
 
-def test_index_lives_in_the_data_folder(tmp_path, idx):
-    assert (tmp_path / ".lil-memory" / "index.sqlite").exists()
+def test_index_lives_in_the_cache_not_the_vault(tmp_path, idx, cache_dir):
+    assert idx.path == index_mod.index_path(tmp_path)
+    assert idx.path.exists()
+    assert idx.path.is_relative_to(cache_dir)
+    assert not list(tmp_path.rglob("index.sqlite*"))
+
+
+def test_each_vault_gets_its_own_index(tmp_path):
+    assert index_mod.index_path(tmp_path / "a") != index_mod.index_path(tmp_path / "b")
 
 
 def test_refresh_picks_up_new_changed_moved_and_deleted_files(tmp_path, idx):
@@ -205,8 +212,7 @@ def test_deleting_the_index_loses_nothing(tmp_path):
     vault.create(tmp_path, "Remember the milk", "note")
     first.refresh(force=True)
     first.close()
-    for name in os.listdir(tmp_path / ".lil-memory"):
-        os.unlink(tmp_path / ".lil-memory" / name)
+    shutil.rmtree(first.path.parent)
     second = Index(tmp_path)
     second.refresh(force=True)
     assert paths(second.search("milk")) == ["global/remember-the-milk.md"]
@@ -223,8 +229,8 @@ def test_reindex_rebuilds_everything(tmp_path, idx):
 
 
 def test_schema_version_mismatch_rebuilds(tmp_path):
-    db = tmp_path / ".lil-memory" / "index.sqlite"
-    db.parent.mkdir()
+    db = index_mod.index_path(tmp_path)
+    db.parent.mkdir(parents=True)
     conn = sqlite3.connect(db)
     conn.execute("CREATE TABLE files (junk)")
     conn.execute("PRAGMA user_version = 99")

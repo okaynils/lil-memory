@@ -16,7 +16,7 @@ from lil_memory import __version__
 
 DEFAULT_VAULT = "~/lil-memory"
 DEFAULT_PORT = 8765
-GITIGNORE = "index.sqlite*\nhttp-secret\n"
+GITIGNORE = "http-secret\n"
 LABELS = {True: "ok  ", False: "FAIL", None: "note"}
 
 
@@ -170,6 +170,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             stats = index.stats()
             index.close()
             report(True, f"index: {stats['memories']} memories, {stats['active']} active")
+            report(True, f"index at {index.path}")
+            if (root / vault.DATA_DIR / "index.sqlite").exists():
+                report(None, "old index in the vault is unused; delete .lil-memory/index.sqlite*")
             if stats["malformed"]:
                 report(None, f"{stats['malformed']} memories have malformed frontmatter")
         except Exception as e:  # doctor reports problems; it never crashes on them

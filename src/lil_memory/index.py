@@ -1,12 +1,14 @@
 """SQLite + FTS5 cache over the vault: incremental refresh, search and ranking.
 
-The index is disposable: deleting .lil-memory/index.sqlite never loses data.
+The index is disposable: deleting it never loses data.
 Knows nothing about MCP.
 """
 
+import hashlib
 import os
 import re
 import sqlite3
+import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
@@ -78,12 +80,28 @@ def fts_query(text: str) -> str | None:
     return " OR ".join(f'"{w}"*' if len(w) >= 3 else f'"{w}"' for w in words)
 
 
+def index_path(root: Path) -> Path:
+    """The index lives in the user's cache folder, not the vault: sync tools that copy a live
+    SQLite file between machines can corrupt it. $XDG_CACHE_HOME overrides the default."""
+    if base := os.environ.get("XDG_CACHE_HOME"):
+        cache = Path(base)
+    elif sys.platform == "darwin":
+        cache = Path.home() / "Library" / "Caches"
+    elif sys.platform == "win32":
+        cache = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    else:
+        cache = Path.home() / ".cache"
+    key = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:16]
+    return cache / "lil-memory" / key / "index.sqlite"
+
+
 class Index:
     def __init__(self, root: Path):
         self.root = root
-        (root / vault.DATA_DIR).mkdir(exist_ok=True)
+        self.path = index_path(root)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(
-            root / vault.DATA_DIR / "index.sqlite",
+            self.path,
             timeout=30,
             isolation_level=None,
             check_same_thread=False,

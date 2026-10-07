@@ -14,6 +14,7 @@ Exits 0 when every budget is met, 1 otherwise. Budgets (from CLAUDE.md):
 import argparse
 import asyncio
 import json
+import os
 import random
 import shutil
 import statistics
@@ -124,6 +125,8 @@ def main() -> int:
     args = parser.parse_args()
     rng = random.Random(42)
     root = Path(tempfile.mkdtemp(prefix="lil-memory-bench-"))
+    cache = root.with_name(root.name + "-cache")
+    os.environ["XDG_CACHE_HOME"] = str(cache)  # keep the index out of the real user cache
     try:
         print(f"Generating {args.memories} memories in {root} ...")
         words = generate(root, args.memories, rng)
@@ -158,9 +161,10 @@ def main() -> int:
         results.append(("server cold start", statistics.median(starts), 500.0, "ms"))
     finally:
         if args.keep:
-            print(f"Kept vault at {root}")
+            print(f"Kept vault at {root} and its index in {cache}")
         else:
             shutil.rmtree(root)
+            shutil.rmtree(cache, ignore_errors=True)
 
     print(f"\n{'budget':<20}{'measured':>12}{'limit':>10}")
     ok = True

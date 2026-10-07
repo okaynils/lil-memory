@@ -59,12 +59,13 @@ The vault root MAY contain other files, such as a README, and other folders. Rea
 
 | Path | Status |
 |---|---|
-| `.lil-memory/index.sqlite` (and `-wal`, `-shm`) | A cache. It MAY be deleted at any time and MUST NOT be needed to recover data. |
 | `.lil-memory/config.toml` | Marks the folder as a vault. Contains `format = "0.1"`, the version of this spec the vault was created with. Readers MAY use it to recognize a vault and MUST ignore keys they do not know. |
 | `.lil-memory/trash/` | Forgotten memories (§10.3). These are user data and can be recovered by hand. |
 | `.lil-memory/http-secret` | Implementation data. lil memory's HTTP mode keeps the secret part of its URL here. It is a credential: it MUST NOT be synced or committed, and it should be readable only by the user. |
 
-The index is specific to one machine, so it MUST NOT be synced between machines. When a writer creates `.lil-memory/`, it SHOULD also create `.lil-memory/.gitignore` containing the lines `index.sqlite*` and `http-secret`. The trash folder can still be versioned that way.
+Search indexes and other caches are specific to one machine. Implementations SHOULD keep them outside the vault, for example in the user's cache folder, because vaults are often synced and sync tools that copy a live database between machines can corrupt it. A cache MUST NOT be needed to recover data. Older versions of lil memory kept their index at `.lil-memory/index.sqlite`; that file is unused and MAY be deleted.
+
+When a writer creates `.lil-memory/`, it SHOULD also create `.lil-memory/.gitignore` containing the line `http-secret`. The trash folder can still be versioned that way.
 
 ## 3. Scope
 

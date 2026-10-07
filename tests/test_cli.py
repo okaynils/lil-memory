@@ -7,6 +7,7 @@ import pytest
 
 from lil_memory import __version__, install, vault
 from lil_memory.cli import main
+from lil_memory.index import index_path
 
 
 @pytest.fixture(autouse=True)
@@ -54,8 +55,9 @@ def test_init_creates_vault(tmp_path, capsys):
     assert main(["init", str(root)]) == 0
     assert (root / "global").is_dir()
     assert (root / ".lil-memory/config.toml").read_text() == 'format = "0.1"\n'
-    assert (root / ".lil-memory/.gitignore").read_text() == "index.sqlite*\nhttp-secret\n"
-    assert (root / ".lil-memory/index.sqlite").exists()
+    assert (root / ".lil-memory/.gitignore").read_text() == "http-secret\n"
+    assert index_path(root).exists()
+    assert not (root / ".lil-memory/index.sqlite").exists()
     assert f"Vault ready at {root.resolve()} (0 memories)" in capsys.readouterr().out
 
 
@@ -110,6 +112,17 @@ def test_doctor_passes_on_a_fresh_vault(tmp_path, capsys):
     assert "FAIL" not in out
     assert "ok    SQLite has FTS5" in out
     assert "note  claude-desktop: not installed" in out
+    assert f"ok    index at {index_path(root)}" in out
+    assert "old index" not in out
+
+
+def test_doctor_notes_an_old_index_in_the_vault(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    (root / ".lil-memory/index.sqlite").write_bytes(b"")
+    capsys.readouterr()
+    assert main(["doctor", "--vault", str(root)]) == 0
+    assert "note  old index in the vault is unused" in capsys.readouterr().out
 
 
 def test_doctor_fails_without_a_vault(tmp_path, capsys):
