@@ -263,3 +263,4 @@ async def test_server_asks_clients_to_use_memory_unprompted(tmp_path):
     assert "without being asked" in instructions
     assert "secrets" in instructions
     assert "side task, not the reply" in instructions
+    assert "Do not mention the memory" in instructions

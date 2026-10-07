@@ -99,7 +99,7 @@ Writes are atomic and never silently overwrite another writer's work; the exact 
 
 Keep tool descriptions short and concrete; models perform better with fewer, clearer tools.
 
-Memory should feel implicit. The server's instructions and the `remember`/`recall` descriptions ask clients to recall at the start of a task and to save preferences, corrections and decisions on their own initiative, treating each save as a side task: the reply carries on with the conversation as normal, with at most a brief aside so the user can object. The client model decides; the server never reads conversations.
+Memory should feel implicit. The server's instructions and the `remember`/`recall` descriptions ask clients to recall at the start of a task and to save preferences, corrections and decisions on their own initiative, treating each save as a side task: the reply carries on with the conversation as normal and does not mention the memory, since the client already shows the tool call. The client model decides; the server never reads conversations.
 
 | Tool | Purpose |
 |---|---|
