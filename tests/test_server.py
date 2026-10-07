@@ -262,3 +262,4 @@ async def test_server_asks_clients_to_use_memory_unprompted(tmp_path):
     instructions = build(tmp_path).instructions  # sent to every client when it connects
     assert "without being asked" in instructions
     assert "secrets" in instructions
+    assert "side task, not the reply" in instructions
