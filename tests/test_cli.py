@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,7 @@ def fake_home(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(home / "AppData"))
     monkeypatch.delenv("LIL_MEMORY_VAULT", raising=False)
     monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    monkeypatch.delenv("CODEX_HOME", raising=False)
     assert Path.home() == home
     for client in install.CLIENTS.values():
         assert client().is_relative_to(home)
@@ -140,6 +142,7 @@ def test_doctor_notes_malformed_files_and_installs(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "note  1 memories have malformed frontmatter" in out
     assert "ok    claude-code: installed" in out
+    assert "note  codex: not installed (lil-memory install codex)" in out
 
 
 @pytest.mark.parametrize("client", ["claude-desktop", "claude-code"])
@@ -242,3 +245,89 @@ def test_serve_speaks_mcp_over_stdio(tmp_path):
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     assert replies[0]["result"]["serverInfo"]["name"] == "lil-memory"
     assert len(replies[1]["result"]["tools"]) == 6
+
+
+CODEX_CONFIG = """# my settings
+model = "gpt-6-sol"
+notify = ["a", "b"]
+
+[projects."/Users/me"]
+trust_level = "trusted"
+
+[mcp_servers.other]
+command = "other-server"
+args = ["--flag"]
+
+[mcp_servers.lil-memory]
+command = "old-python"
+args = ["serve"]
+
+[mcp_servers.lil-memory.env]
+OLD = "1"
+
+[[profiles.list]]
+name = "x"
+"""
+
+
+def test_install_codex_into_fresh_config(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    assert main(["install", "codex", "--vault", str(root)]) == 0
+    config = tmp_path / "home/.codex/config.toml"
+    assert config.read_text().startswith("[mcp_servers.lil-memory]\ncommand = ")
+    entry = tomllib.loads(config.read_text())["mcp_servers"]["lil-memory"]
+    assert entry == {"command": entry["command"], "args": entry["args"]}
+    assert entry["args"][-3:] == ["serve", "--vault", str(root.resolve())]
+    assert install.installed("codex") == entry
+    capsys.readouterr()
+
+
+def test_install_codex_replaces_only_our_table_and_keeps_comments(tmp_path):
+    config = tmp_path / "home/.codex/config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text(CODEX_CONFIG)
+    path, backup = install.install("codex", tmp_path / "vault")
+    assert backup.read_text() == CODEX_CONFIG
+    text = config.read_text()
+    assert text.startswith("# my settings\n")
+    assert "old-python" not in text and "OLD" not in text
+    data = tomllib.loads(text)
+    before = tomllib.loads(CODEX_CONFIG)
+    assert data["model"] == "gpt-6-sol"
+    assert data["projects"] == before["projects"]
+    assert data["profiles"] == before["profiles"]
+    assert data["mcp_servers"]["other"] == before["mcp_servers"]["other"]
+    assert data["mcp_servers"]["lil-memory"]["args"][-1] == str(tmp_path / "vault")
+    # Installing again is stable: one table, pointing at the new vault.
+    install.install("codex", tmp_path / "vault2")
+    text = config.read_text()
+    assert text.count("[mcp_servers.lil-memory]") == 1
+    assert install.installed("codex")["args"][-1] == str(tmp_path / "vault2")
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "not = [valid",  # unparsable
+        "mcp_servers = 3\n",  # wrong shape
+        '[mcp_servers]\nlil-memory = { command = "x" }\n',  # defined in a way we can't edit
+    ],
+)
+def test_install_codex_refuses_to_touch_unexpected_files(tmp_path, content, capsys):
+    config = tmp_path / "home/.codex/config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text(content)
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    assert main(["install", "codex", "--vault", str(root)]) == 1
+    assert config.read_text() == content
+    assert list(config.parent.iterdir()) == [config]
+    capsys.readouterr()
+
+
+def test_codex_respects_codex_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "cx"))
+    path, _ = install.install("codex", tmp_path / "vault")
+    assert path == tmp_path / "cx/config.toml"
+    assert install.installed("codex")

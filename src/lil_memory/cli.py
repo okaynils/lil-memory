@@ -213,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     serve.add_argument("--rotate", action="store_true", help="replace the secret URL")
     command("install", cmd_install, "add lil-memory to a client's MCP config").add_argument(
-        "client", choices=["claude-desktop", "claude-code"]
+        "client", choices=["claude-desktop", "claude-code", "codex"]
     )
     command("reindex", cmd_reindex, "rebuild the index from the files")
     command("doctor", cmd_doctor, "check FTS5, the vault and client installs")

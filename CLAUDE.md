@@ -153,7 +153,7 @@ Every AI client starts its own server process, so several lil memory processes (
 ```
 lil-memory init [path]            # create vault + .lil-memory/, write config
 lil-memory serve [--http]         # run the MCP server (stdio default; --http: secret URL, --rotate)
-lil-memory install <client>       # write MCP config for claude-desktop | claude-code | cursor
+lil-memory install <client>       # write MCP config for claude-desktop | claude-code | codex | cursor
 lil-memory reindex                # rebuild the index from files
 lil-memory import chatgpt <file>  # export -> imports/chatgpt/*.md
 lil-memory import claude <file>   # export -> imports/claude/*.md

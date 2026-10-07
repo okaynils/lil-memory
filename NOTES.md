@@ -46,6 +46,9 @@ These were mistakes in tests while they were being written. No assertion was loo
   - Claude Code: user scope is the top-level `mcpServers` object in `~/.claude.json`, or in `$CLAUDE_CONFIG_DIR/.claude.json` when that is set. `type: "stdio"` is required.
   - Claude Desktop: `claude_desktop_config.json` under `~/Library/Application Support/Claude` (macOS) or `%APPDATA%\Claude` (Windows), with no `type` key.
   - The Linux Desktop path (`~/.config/Claude`) comes only from third-party sources.
+  - Codex: checked against the official Codex MCP docs (learn.chatgpt.com/docs/extend/mcp) on 2026-10-07. A `[mcp_servers.<name>]` table with `command` and `args` in `~/.codex/config.toml`, shared by "the ChatGPT desktop app, Codex CLI, and IDE extension" (quoted from those docs). `CODEX_HOME` moves the folder.
+  - Codex config is TOML and the stdlib can only read TOML. `install` removes our own table as text, appends a fresh one, and re-parses the result with `tomllib`. If the result doesn't parse or doesn't contain exactly our entry (for example when the user defined it as an inline table), it refuses and asks the user to edit by hand.
+  - ChatGPT (web) has no config file to write: it needs HTTP mode and a tunnel. Its setup is documented on the website, not automated.
 - **Writing configs:** `install` refuses to touch a config that isn't a JSON object with an object-valued `mcpServers`. It writes a timestamped `.bak` next to the original before every change.
   - Claude Code rewrites `~/.claude.json` while it runs, so installing while it is open can lose that write. The CLI tells the user to restart the client.
 - **Testing:** `tests/test_cli.py` points `HOME`, `APPDATA` and `CLAUDE_CONFIG_DIR` at a temporary directory for every test, and asserts this before each one.

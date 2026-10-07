@@ -15,7 +15,7 @@ lil memory is a small local [MCP](https://modelcontextprotocol.io) server. Every
 
 ```sh
 uvx lil-memory init                      # 1. create the vault at ~/lil-memory
-uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code)
+uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code, codex)
 ```
 
 3. Restart the client and talk to it:
@@ -23,6 +23,8 @@ uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code)
    - "Load my context for acme-site."
 
 Open `~/lil-memory` in Obsidian to see and edit your memories.
+
+For ChatGPT and any other MCP client, see [Connect your AI](https://lilmemory.nils.me/#connect).
 
 `lil-memory doctor` checks your setup. `lil-memory reindex` rebuilds the search index from the files. Use `--vault PATH` or `$LIL_MEMORY_VAULT` to keep the vault somewhere else.
 
@@ -59,7 +61,7 @@ The connected AI exposes six tools: `remember`, `recall`, `get`, `update`, `forg
 
 ## Security
 
-- **Local by default.** Claude Desktop and Claude Code start lil memory as a local process and talk to it over stdio. Nothing listens on the network.
+- **Local by default.** Claude Desktop, Claude Code and Codex start lil memory as a local process and talk to it over stdio. Nothing listens on the network.
 - **Memories are untrusted input.** Memories written by one AI are read by another, so stored text could try to give instructions. lil memory returns memories inside clearly marked `<memory>` blocks, labeled as data and not instructions. It never acts on their content itself.
 - **Remote clients such as ChatGPT** can only reach a server through an HTTPS URL, and ChatGPT can't send a static token. So HTTP mode keeps things minimal: the URL itself is the secret. Use it with caution, because anyone who has the URL gets full access to your memories (see the trade-off below).
 
