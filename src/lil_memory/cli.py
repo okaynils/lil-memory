@@ -5,12 +5,15 @@ for the MCP protocol.
 """
 
 import argparse
+import json
 import os
 import secrets
+import subprocess
 import sys
 import time
 import tomllib
 from pathlib import Path
+from urllib.parse import quote
 
 from lil_memory import __version__
 
@@ -141,6 +144,53 @@ def cmd_install(args: argparse.Namespace) -> int:
     return 0
 
 
+def obsidian_config() -> Path:
+    """Obsidian's own list of known vaults. We only read it."""
+    if sys.platform == "darwin":
+        base = Path.home() / "Library/Application Support"
+    elif sys.platform == "win32":
+        base = Path(os.environ["APPDATA"])
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "obsidian" / "obsidian.json"
+
+
+def launch(target: str) -> None:
+    """Hand a URL or folder to the operating system, like double-clicking it."""
+    if sys.platform == "win32":
+        os.startfile(target)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.run([opener, target], check=True, capture_output=True)
+
+
+def cmd_open(args: argparse.Namespace) -> int:
+    root = vault_path(args)
+    if read_config(root) is None:
+        return no_vault(root)
+    try:
+        vaults = json.loads(obsidian_config().read_text(encoding="utf-8"))["vaults"]
+        ids = [k for k, v in vaults.items() if Path(v["path"]).expanduser().resolve() == root]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        vaults = None
+    try:
+        if vaults is None:
+            launch(str(root))
+            print(f"Opened {root}. Get Obsidian (obsidian.md) to browse it as linked notes.")
+        elif ids:
+            launch("obsidian://open?vault=" + quote(ids[0], safe=""))
+            print(f"Opened {root} in Obsidian.")
+        else:
+            launch("obsidian://open")
+            print(
+                f'Obsidian does not know this vault yet. Choose "Open folder as vault" and select\n'
+                f"\n    {root}\n\nOnce that is done, `lil-memory open` goes straight there."
+            )
+    except (OSError, subprocess.CalledProcessError) as e:
+        return fail(f"could not open {root}: {e}")
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     from lil_memory import install, vault
     from lil_memory.index import Index, check_fts5
@@ -215,6 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     command("install", cmd_install, "add lil-memory to a client's MCP config").add_argument(
         "client", choices=["claude-desktop", "claude-code", "codex"]
     )
+    command("open", cmd_open, "open the vault in Obsidian to explore your memories")
     command("reindex", cmd_reindex, "rebuild the index from the files")
     command("doctor", cmd_doctor, "check FTS5, the vault and client installs")
     return parser

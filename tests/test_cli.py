@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from lil_memory import __version__, install, vault
+from lil_memory import __version__, cli, install, vault
 from lil_memory.cli import main
 from lil_memory.index import index_path
 
@@ -21,9 +21,11 @@ def fake_home(tmp_path, monkeypatch):
     monkeypatch.delenv("LIL_MEMORY_VAULT", raising=False)
     monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     assert Path.home() == home
     for client in install.CLIENTS.values():
         assert client().is_relative_to(home)
+    assert cli.obsidian_config().is_relative_to(home)
     return home
 
 
@@ -38,7 +40,7 @@ def test_no_command_prints_help(capsys):
     assert main([]) == 0
     out = capsys.readouterr().out
     assert "usage: lil-memory" in out
-    for command in ["init", "serve", "install", "reindex", "doctor"]:
+    for command in ["init", "serve", "install", "open", "reindex", "doctor"]:
         assert command in out
 
 
@@ -331,3 +333,71 @@ def test_codex_respects_codex_home(tmp_path, monkeypatch):
     path, _ = install.install("codex", tmp_path / "vault")
     assert path == tmp_path / "cx/config.toml"
     assert install.installed("codex")
+
+
+@pytest.fixture
+def launched(monkeypatch):
+    """Record what `open` would hand to the operating system instead of opening it."""
+    targets = []
+    monkeypatch.setattr(cli, "launch", targets.append)
+    return targets
+
+
+def write_obsidian_vaults(vaults: dict) -> None:
+    config = cli.obsidian_config()
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(json.dumps({"vaults": vaults}))
+
+
+def test_open_goes_straight_to_a_known_vault(tmp_path, launched, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    other = {"path": str(tmp_path / "notes"), "ts": 1}
+    write_obsidian_vaults({"aaa": other, "b c/1": {"path": str(root), "ts": 2, "open": True}})
+    capsys.readouterr()
+    assert main(["open", "--vault", str(root)]) == 0
+    assert launched == ["obsidian://open?vault=b%20c%2F1"]
+    assert f"Opened {root.resolve()} in Obsidian." in capsys.readouterr().out
+
+
+def test_open_explains_the_one_time_step_for_a_new_vault(tmp_path, launched, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    write_obsidian_vaults({"aaa": {"path": str(tmp_path / "notes"), "ts": 1}})
+    capsys.readouterr()
+    assert main(["open", "--vault", str(root)]) == 0
+    assert launched == ["obsidian://open"]
+    out = capsys.readouterr().out
+    assert '"Open folder as vault"' in out
+    assert str(root.resolve()) in out
+
+
+@pytest.mark.parametrize("content", [None, "{broken", '{"vaults": []}'])
+def test_open_falls_back_to_the_folder_without_obsidian(tmp_path, launched, capsys, content):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    if content is not None:
+        cli.obsidian_config().parent.mkdir(parents=True)
+        cli.obsidian_config().write_text(content)
+    capsys.readouterr()
+    assert main(["open", "--vault", str(root)]) == 0
+    assert launched == [str(root.resolve())]
+    assert "obsidian.md" in capsys.readouterr().out
+
+
+def test_open_needs_a_vault(tmp_path, launched, capsys):
+    assert main(["open", "--vault", str(tmp_path / "nowhere")]) == 1
+    assert launched == []
+    assert "no vault at" in capsys.readouterr().err
+
+
+def test_open_reports_a_failing_launcher(tmp_path, monkeypatch, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+
+    def broken(target):
+        raise OSError("no opener")
+
+    monkeypatch.setattr(cli, "launch", broken)
+    assert main(["open", "--vault", str(root)]) == 1
+    assert "could not open" in capsys.readouterr().err

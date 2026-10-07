@@ -22,7 +22,7 @@ uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code,
    - "Remember that I prefer British spelling."
    - "Load my context for acme-site."
 
-Open `~/lil-memory` in Obsidian to see and edit your memories.
+Run `lil-memory open` to explore and edit your memories in Obsidian.
 
 For ChatGPT and any other MCP client, see [Connect your AI](https://lilmemory.nils.me/#connect).
 

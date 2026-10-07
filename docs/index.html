@@ -46,7 +46,9 @@ The memories are plain files in a folder you own, so you can read and edit them 
 </ul></li>
 </ol>
 
-<p>Open <code>~/lil-memory</code> in Obsidian to see and edit your memories.
+<p>Run <code>lil-memory open</code> to explore and edit your memories in <a href="https://obsidian.md">Obsidian</a>.
+The first time, Obsidian asks you to pick the vault folder once ("Open folder as vault"); after that the command goes straight there.
+Without Obsidian, it opens the folder in your file manager.
 Run <code>lil-memory doctor</code> if something does not work.</p>
 
 <h2 id="connect">Connect your AI</h2>
@@ -189,6 +191,7 @@ Prefers British spelling and short paragraphs in client-facing copy.
 <pre>
 lil-memory init [path]           create a vault (default ~/lil-memory)
 lil-memory install &lt;client&gt;      add to claude-desktop, claude-code or codex
+lil-memory open                  explore your memories in Obsidian
 lil-memory serve                 run the MCP server over stdio
 lil-memory serve --http          run at a secret URL on 127.0.0.1 (--port, --rotate)
 lil-memory reindex               rebuild the search index from the files
