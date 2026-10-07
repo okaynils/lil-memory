@@ -70,7 +70,7 @@ The connected AI exposes six tools: `remember`, `recall`, `get`, `update`, `forg
 
   In ChatGPT, turn on developer mode in the settings, then add `https://<tunnel-host>/mcp/<secret>` as a custom connector with no authentication.
 
-  **The trade-off:** anyone who has that URL can read, change and forget all of your memories. A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider. OpenAI also stores it in your connector settings, and sees every memory ChatGPT reads. HTTP mode only runs while you keep `serve --http` open. `lil-memory serve --http --rotate` replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked.
+  **The trade-off:** anyone who has that URL can read, change and forget all of your memories. A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider. OpenAI also stores it in your connector settings, and sees every memory ChatGPT reads. HTTP mode only runs while you keep `serve --http` open. `lil-memory serve --http --rotate` replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked. To keep HTTP mode running on your laptop or an always-on machine, see [Run it all the time](https://lilmemory.nils.me/#always-on).
 
 ## License
 

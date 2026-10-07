@@ -23,6 +23,7 @@ The memories are plain files in a folder you own, so you can read and edit them 
 | <a href="#format">File format</a>
 | <a href="#tools">Tools</a>
 | <a href="#cli">CLI</a>
+| <a href="#always-on">Always on</a>
 | <a href="#security">Security</a>
 | <a href="https://github.com/okaynils/lil-memory">Source</a> ]</p>
 
@@ -126,6 +127,95 @@ lil-memory doctor                check FTS5, the vault and client installs
 </pre>
 
 <p>Every command takes <code>--vault PATH</code>.</p>
+
+<h2 id="always-on">Run it all the time</h2>
+
+<p><b>Local clients need nothing.</b> Claude Desktop, Claude Code and other local clients start lil memory themselves
+whenever they need it and stop it when they quit. There is no server to keep running.</p>
+
+<p><b>Only HTTP mode (ChatGPT) needs a process that stays up</b>, plus a tunnel in front of it.
+Two ways to set that up:</p>
+
+<ul>
+<li><b>On your laptop.</b> Simple, but ChatGPT cannot reach your memories while the laptop sleeps or is closed.</li>
+<li><b>On an always-on machine</b>, such as a Mac mini or a small Linux box. ChatGPT can reach it at any time.
+On a Mac, turn on "Prevent automatic sleeping when the display is off" in System Settings.</li>
+</ul>
+
+<h3>macOS: a launchd agent</h3>
+
+<p>Save this as <code>~/Library/LaunchAgents/lil-memory.plist</code>.
+Replace the first path with the output of <code>which uvx</code>, and add
+<code>&lt;string&gt;--vault&lt;/string&gt;&lt;string&gt;/path/to/vault&lt;/string&gt;</code>
+if your vault is not at <code>~/lil-memory</code>.</p>
+
+<pre>
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE plist PUBLIC &quot;-//Apple//DTD PLIST 1.0//EN&quot; &quot;http://www.apple.com/DTDs/PropertyList-1.0.dtd&quot;&gt;
+&lt;plist version=&quot;1.0&quot;&gt;
+&lt;dict&gt;
+  &lt;key&gt;Label&lt;/key&gt;&lt;string&gt;lil-memory&lt;/string&gt;
+  &lt;key&gt;ProgramArguments&lt;/key&gt;
+  &lt;array&gt;
+    &lt;string&gt;/Users/YOU/.local/bin/uvx&lt;/string&gt;
+    &lt;string&gt;lil-memory&lt;/string&gt;
+    &lt;string&gt;serve&lt;/string&gt;
+    &lt;string&gt;--http&lt;/string&gt;
+  &lt;/array&gt;
+  &lt;key&gt;RunAtLoad&lt;/key&gt;&lt;true/&gt;
+  &lt;key&gt;KeepAlive&lt;/key&gt;&lt;true/&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;
+</pre>
+
+<pre>
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/lil-memory.plist   # start now and at every login
+launchctl bootout gui/$(id -u)/lil-memory                                  # stop it
+</pre>
+
+<h3>Linux: a systemd user service</h3>
+
+<p>Save this as <code>~/.config/systemd/user/lil-memory.service</code>:</p>
+
+<pre>
+[Unit]
+Description=lil memory (HTTP mode)
+
+[Service]
+ExecStart=%h/.local/bin/uvx lil-memory serve --http
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+</pre>
+
+<pre>
+systemctl --user enable --now lil-memory   # start now and at every login
+loginctl enable-linger $USER                # keep it running without anyone logged in
+</pre>
+
+<h3>The URL and the tunnel</h3>
+
+<p>The secret URL stays the same across restarts. It is
+<code>http://127.0.0.1:8765/mcp/</code> followed by the contents of <code>~/lil-memory/.lil-memory/http-secret</code>.</p>
+
+<p>A quick tunnel (<code>cloudflared tunnel --url ...</code>) gets a new random hostname every time it starts,
+which breaks the ChatGPT connector. For a setup that runs all the time, use a tunnel with a fixed hostname,
+such as <a href="https://tailscale.com/kb/1223/funnel">Tailscale Funnel</a> or a
+<a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">named Cloudflare tunnel</a>,
+and run it as a service too. Both tools can install themselves as one.
+Everything in <a href="#security">Security</a> still applies.</p>
+
+<h3>Using the same vault on several machines</h3>
+
+<p>Sync the vault folder with Syncthing, iCloud Drive, Dropbox or git, and run lil memory on each machine.
+This is safe because the search index lives in each machine's cache folder, outside the vault.
+Two things to know:</p>
+
+<ul>
+<li>Keep <code>.lil-memory/http-secret</code> out of sync, for example with an ignore rule. Each machine that serves HTTP gets its own secret.</li>
+<li>If two machines change the same memory before syncing, your sync tool keeps both versions as a conflict copy. Nothing is lost, but you may need to tidy up by hand.</li>
+</ul>
 
 <h2 id="security">Security</h2>
 
