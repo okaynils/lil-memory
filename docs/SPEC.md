@@ -93,9 +93,9 @@ A memory's **title** is its filename without the `.md` extension, called the **s
 
 ### 4.1 Slug algorithm
 
-When a writer creates a memory, it makes the filename from the content:
+When a writer creates a memory, it makes the filename from a short title if it has one (for example `Favorite NFL team`), and otherwise from the content:
 
-1. Take the first line of the content that contains at least one letter or digit. If there is none, the slug is `memory`; go to step 7.
+1. Take the title, or else the first line of the content, that contains at least one letter or digit. If there is none, the slug is `memory`; go to step 7.
 2. Normalize the line to Unicode NFKD and remove all combining marks (category `Mn`). For example, `é` becomes `e` and `ä` becomes `a`.
 3. Lowercase it.
 4. Replace each run of characters outside `[a-z0-9]` with a single `-`. Remove leading and trailing `-`.
@@ -270,7 +270,7 @@ If nothing matches, it is an error. If more than one file matches, it is an erro
 
 ### 8.2 Wikilinks
 
-`supersedes`, `superseded_by` and links in the body use Obsidian wikilink syntax: `[[target]]`, `[[target|alias]]` or `[[folder/target]]`.
+`supersedes`, `superseded_by` and links in the body use Obsidian wikilink syntax. Links in the body connect related memories, for example `Their favorite player is George Kittle, tight end for the [[favorite-nfl-team]].` The syntax is `[[target]]`, `[[target|alias]]` or `[[folder/target]]`.
 
 Writers MUST write the bare stem, for example `"[[uses-american-spelling]]"`. Slugs are unique across the vault (§4.2), so the bare stem points to one file.
 
@@ -321,7 +321,7 @@ These operations define how a writer changes the vault. Tool names in parenthese
 To replace memory **old** with new content:
 
 1. Resolve **old**. If its status is `superseded`, it is an error that names the current memory from `superseded_by`. If its frontmatter is malformed, it is an error (§6.1).
-2. **Write the new memory first.** It uses the same scope as **old**, copies `type` and `tags` from **old**, and sets `supersedes: "[[<old stem>]]"`. Its slug comes from the new content (§4.1). Otherwise it follows §10.1.
+2. **Write the new memory first.** It uses the same scope as **old**, copies `type` and `tags` from **old**, and sets `supersedes: "[[<old stem>]]"`. Its slug comes from the new title if one is given, otherwise from the new content (§4.1). Otherwise it follows §10.1.
 3. **Then rewrite old.** Set `status: superseded`, set `superseded_by: "[[<new stem>]]"` and set `updated` to now. If **old** has no id, give it one. The body is unchanged and unknown fields are preserved.
 
 Because of this order, a crash between steps 2 and 3 leaves two active memories, which is recoverable. It never leaves a superseded memory that points to nothing.

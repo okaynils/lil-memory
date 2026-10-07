@@ -413,3 +413,13 @@ def test_failed_supersede_removes_the_new_file(tmp_path):
     with pytest.raises(VaultError, match="already superseded"):
         vault.create(tmp_path, "Second", "fact", supersedes=stale)
     assert not (tmp_path / "global/second.md").exists()
+
+
+def test_create_names_the_file_after_the_title(tmp_path):
+    m = vault.create(
+        tmp_path, "Their favorite NFL team is the 49ers.", "fact", title="Favorite NFL team"
+    )
+    assert m.path == "global/favorite-nfl-team.md"
+    assert m.body.strip() == "Their favorite NFL team is the 49ers."
+    blank = vault.create(tmp_path, "Likes hiking in the Alps", "fact", title="  ")
+    assert blank.path == "global/likes-hiking-in-the-alps.md"

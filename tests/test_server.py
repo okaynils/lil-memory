@@ -264,3 +264,49 @@ async def test_server_asks_clients_to_use_memory_unprompted(tmp_path):
     assert "secrets" in instructions
     assert "side task, not the reply" in instructions
     assert "Do not mention the memory" in instructions
+
+
+async def test_titles_name_files_and_links_connect_memories(tmp_path):
+    async with client(tmp_path) as s:
+        text = await call(
+            s,
+            "remember",
+            content="Their favorite NFL team is the San Francisco 49ers.",
+            type="preference",
+            title="Favorite NFL team",
+        )
+        assert "Saved favorite-nfl-team " in text and "match no memory" not in text
+        text = await call(
+            s,
+            "remember",
+            content="Favorite player: George Kittle, tight end for the [[favorite-nfl-team]].",
+            type="preference",
+            title="Favorite football player",
+        )
+        assert "Saved favorite-football-player " in text
+        assert "match no memory" not in text
+        player = vault.read(tmp_path, "global/favorite-football-player.md")
+        assert "[[favorite-nfl-team]]" in player.body
+
+        text = await call(
+            s,
+            "remember",
+            content="Watches [[Favorite NFL team]] and [[favorite-nfl-team|the Niners]].",
+            type="note",
+            title="Game day",
+        )
+        assert "These links match no memory yet: [[Favorite NFL team]]." in text
+
+
+async def test_update_can_retitle_and_checks_links(tmp_path):
+    async with client(tmp_path) as s:
+        await call(s, "remember", content="Likes the Raiders", type="preference", title="NFL team")
+        text = await call(
+            s,
+            "update",
+            ref="nfl-team",
+            content="Now a 49ers fan, see [[no-such-memory]].",
+            title="Favorite NFL team",
+        )
+        assert "Saved favorite-nfl-team " in text and "It supersedes nfl-team." in text
+        assert "[[no-such-memory]]" in text

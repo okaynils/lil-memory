@@ -131,6 +131,8 @@ A client on the same machine needs no tunnel.</li>
 "I don't like that, keep it shorter", "we use pnpm here" or "let's go with Postgres, it's what the team knows" each become a memory.</li>
 <li>Saving happens quietly on the side. The conversation carries on as normal: say "I like nature" and it saves that, then talks about nature with you.
 It does not mention the memory; your client shows the tool call. Say "forget that" if it got it wrong.</li>
+<li>Each memory gets a short, descriptive title and is linked to related memories, like notes in Obsidian.
+Say "my favorite team are the 49ers" and later "my favorite player is George Kittle": you get <code>favorite-nfl-team.md</code> and <code>favorite-football-player.md</code>, linked to each other in Obsidian's graph.</li>
 <li>It does not save one-off requests, temporary details, its own guesses, or secrets such as passwords and keys.</li>
 </ul>
 
@@ -198,7 +200,7 @@ Prefers British spelling and short paragraphs in client-facing copy.
 
 <table border="1" cellpadding="4" cellspacing="0">
 <tr><th>Name</th><th>What it does</th></tr>
-<tr><td><code>remember</code></td><td>Save one memory. Also returns up to 3 similar existing memories.</td></tr>
+<tr><td><code>remember</code></td><td>Save one memory under a short title, linked to related memories with <code>[[wikilinks]]</code>. Also returns up to 3 similar existing memories.</td></tr>
 <tr><td><code>recall</code></td><td>Full-text search over active memories, filtered by scope, type or tags.</td></tr>
 <tr><td><code>get</code></td><td>Fetch one memory by id, title or path.</td></tr>
 <tr><td><code>update</code></td><td>Replace a memory with new content; the old one is kept as superseded.</td></tr>

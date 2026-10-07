@@ -226,6 +226,7 @@ def create(
     source: str = "",
     supersedes: Memory | None = None,
     taken: Callable[[str], bool] | None = None,
+    title: str | None = None,
 ) -> Memory:
     """Write a new active memory; if it supersedes another, mark that one too."""
     if not content.strip():
@@ -246,7 +247,13 @@ def create(
         "supersedes": f"[[{supersedes.stem}]]" if supersedes else "",
     }
     text = dump(meta, content)
-    path = write_new(root, validate_scope(scope), slugify(content), text, taken or disk_stems(root))
+    path = write_new(
+        root,
+        validate_scope(scope),
+        slugify((title or "").strip() or content),
+        text,
+        taken or disk_stems(root),
+    )
     new = read(root, path)
     if supersedes is not None:
         try:
@@ -258,10 +265,10 @@ def create(
 
 
 def supersede(
-    root: Path, old: Memory, content: str, source: str = "", taken=None
+    root: Path, old: Memory, content: str, source: str = "", taken=None, title: str | None = None
 ) -> tuple[Memory, Memory]:
     """Replace `old` with new content in the same scope; returns (new, old)."""
-    new = create(root, content, old.type, old.scope, old.tags, source, old, taken)
+    new = create(root, content, old.type, old.scope, old.tags, source, old, taken, title)
     return new, read(root, old.path)
 
 

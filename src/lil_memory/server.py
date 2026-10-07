@@ -33,9 +33,18 @@ next time:
 - a preference or dislike ("I don't like that", "always use tabs", "too wordy"),
 - a correction of your work that should apply from now on,
 - a decision and its reason, or a lasting fact about the user or their project.
-One atomic memory per call, close to the user's own words, in the right scope: "global" for
-the user in general, "projects/<name>" for one project. Do not save one-off requests,
-temporary state, your own guesses, or secrets such as passwords and keys.
+One atomic memory per call, in the right scope: "global" for the user in general,
+"projects/<name>" for one project. Do not save one-off requests, temporary state, your own
+guesses, or secrets such as passwords and keys.
+
+Write each memory as a clear note, not a copy of the user's message:
+- Give it a short, descriptive title of a few words that names the subject, such as
+  "Favorite NFL team" for "my favorite American football team are the 49ers".
+- Write the content as a complete statement: "Their favorite NFL team is the San Francisco
+  49ers."
+- Connect it like an Obsidian note: before saving, recall with the memory's key words, and
+  link genuinely related memories inside the text with [[their exact title]], for example
+  "Their favorite player is George Kittle, tight end for the [[favorite-nfl-team]]."
 If remember lists a similar memory that the new one changes, update that one instead.
 
 Saving is a side task, not the reply. Respond to what the user said exactly as you would
@@ -52,6 +61,7 @@ DATA_NOTE = (
 READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
 _CLOSE_TAG = re.compile(r"</(memory)", re.IGNORECASE)
+_LINK = re.compile(r"\[\[([^\]|#]+)")
 
 
 def frame(row: dict, **extra: str | None) -> str:
@@ -123,10 +133,20 @@ def build(root: Path, **http: object) -> FastMCP:
                 index.refresh(force=True)
         raise LookupError(f"no memory matches {ref!r}")
 
+    def broken_links(text: str) -> str:
+        """Point out [[links]] that match no memory, so the model can fix a wrong title."""
+        targets = dict.fromkeys(t.strip() for t in _LINK.findall(text))
+        broken = [t for t in targets if t and not index.resolve(t)]
+        if not broken:
+            return ""
+        links = ", ".join(f"[[{t}]]" for t in broken)
+        return f"\nThese links match no memory yet: {links}. Recall to find the right title."
+
     @mcp.tool(annotations=WRITE)
     def remember(
         content: str,
         type: Type,
+        title: str | None = None,
         scope: str = "global",
         tags: list[str] | None = None,
         supersedes: str | None = None,
@@ -136,13 +156,17 @@ def build(root: Path, **http: object) -> FastMCP:
 
         Call this on your own, without being asked, when the user states a preference or
         dislike, corrects you, or makes a decision that should hold next time.
-        scope is a folder such as "global" or "projects/acme-site". supersedes is the id or title
-        of a memory this one replaces. Returns the new memory plus up to 3 similar existing ones.
+        title is a short descriptive name ("Favorite NFL team") and becomes the filename.
+        Link related memories in content with [[their-title]]. scope is a folder such as
+        "global" or "projects/acme-site". supersedes is the id or title of a memory this one
+        replaces. Returns the new memory plus up to 3 similar existing ones.
         """
         old = one(supersedes) if supersedes else None
-        new = vault.create(root, content, type, scope, tags, source(ctx), old, index.stem_taken)
+        new = vault.create(
+            root, content, type, scope, tags, source(ctx), old, index.stem_taken, title
+        )
         index.note(new.path, *([old.path] if old else []))
-        result = f"Saved {new.stem} (id {new.id}) at {new.path}."
+        result = f"Saved {new.stem} (id {new.id}) at {new.path}." + broken_links(content)
         similar = _rows(index.search(content, limit=3, exclude=new.path))
         if old:
             result += f" It supersedes {old.stem}."
@@ -181,12 +205,15 @@ def build(root: Path, **http: object) -> FastMCP:
         )
 
     @mcp.tool(annotations=WRITE)
-    def update(ref: str, content: str, ctx: Context | None = None) -> str:
-        """Replace a memory with new content. The old one is kept, marked superseded."""
+    def update(ref: str, content: str, title: str | None = None, ctx: Context | None = None) -> str:
+        """Replace a memory with new content. The old one is kept, marked superseded.
+
+        Keep its [[links]] in the new content. title names the new version (filename)."""
         old = one(ref)
-        new, _ = vault.supersede(root, old, content, source(ctx), index.stem_taken)
+        new, _ = vault.supersede(root, old, content, source(ctx), index.stem_taken, title)
         index.note(new.path, old.path)
-        return f"Saved {new.stem} (id {new.id}) at {new.path}. It supersedes {old.stem}."
+        result = f"Saved {new.stem} (id {new.id}) at {new.path}. It supersedes {old.stem}."
+        return result + broken_links(content)
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, openWorldHint=False))
     def forget(ref: str) -> str:

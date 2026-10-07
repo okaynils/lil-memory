@@ -103,10 +103,10 @@ Memory should feel implicit. The server's instructions and the `remember`/`recal
 
 | Tool | Purpose |
 |---|---|
-| `remember(content, type, scope="global", tags=[], supersedes=None)` | Create a memory. Returns its id and path, plus up to 3 similar existing memories (FTS match) so the model can choose to update instead. Never blocks on similarity. |
+| `remember(content, type, title=None, scope="global", tags=[], supersedes=None)` | Create a memory. `title` is a short descriptive name that becomes the filename. Related memories are linked inside `content` with `[[title]]`; the result points out links that match no memory. Returns its id and path, plus up to 3 similar existing memories (FTS match) so the model can choose to update instead. Never blocks on similarity. |
 | `recall(query, scope=None, type=None, tags=None, limit=10)` | Full-text search over active memories. Scope filter includes subfolders. |
 | `get(ref)` | Fetch one memory by id or filename. |
-| `update(ref, content)` | Supersede: write a new memory, mark the old one `superseded` with `superseded_by`. History is never overwritten. |
+| `update(ref, content, title=None)` | Supersede: write a new memory, mark the old one `superseded` with `superseded_by`. History is never overwritten. |
 | `forget(ref)` | Move the file to `.lil-memory/trash/<id>.md`. Recoverable by hand. |
 | `list_scopes()` | Folders with memory counts. Cheap orientation for the model. |
 
