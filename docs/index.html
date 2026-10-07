@@ -121,7 +121,26 @@ A client on the same machine needs no tunnel.</li>
 
 <h2 id="usage">Usage</h2>
 
-<p>You do not call lil memory yourself; your AI client does. Just ask in plain words:</p>
+<p><b>Most of the time you do nothing.</b> lil memory tells every connected AI to use it on its own:</p>
+
+<ul>
+<li>When you start working on something, it looks up your preferences and that project's memories.</li>
+<li>When you say something that should still matter next time, it saves it right away.
+"I don't like that, keep it shorter", "we use pnpm here" or "let's go with Postgres, it's what the team knows" each become a memory.</li>
+<li>It tells you in one short line what it saved, for example "Noted: prefers short answers". Say "forget that" if it got it wrong.</li>
+<li>It does not save one-off requests, temporary details, its own guesses, or secrets such as passwords and keys.</li>
+</ul>
+
+<p>The AI decides when to save; lil memory never reads your conversations itself.
+Most clients follow these instructions. If yours does not, add this line to its instruction file,
+such as <code>CLAUDE.md</code> or <code>AGENTS.md</code>:</p>
+
+<pre>
+Use the lil-memory tools on your own: recall my preferences and the current project when a task
+starts, and remember preferences, corrections and decisions as soon as I state them.
+</pre>
+
+<p>You can also ask directly, in plain words:</p>
 
 <ul>
 <li><b>Save something:</b> "Remember that the acme-site deploys to Cloudflare."</li>

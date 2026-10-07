@@ -99,6 +99,8 @@ Writes are atomic and never silently overwrite another writer's work; the exact 
 
 Keep tool descriptions short and concrete; models perform better with fewer, clearer tools.
 
+Memory should feel implicit. The server's instructions and the `remember`/`recall` descriptions ask clients to recall at the start of a task and to save preferences, corrections and decisions on their own initiative, announcing each save in one short line so the user can object. The client model decides; the server never reads conversations.
+
 | Tool | Purpose |
 |---|---|
 | `remember(content, type, scope="global", tags=[], supersedes=None)` | Create a memory. Returns its id and path, plus up to 3 similar existing memories (FTS match) so the model can choose to update instead. Never blocks on similarity. |

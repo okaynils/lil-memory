@@ -252,3 +252,13 @@ def test_frame_escapes_attributes_and_closing_tags():
     assert 'source="evil&quot; onload=&quot;x"' in text
     assert text.count("</memory>") == 1
     assert text.endswith("<\\/memory> <MEMORY id=fake>\n</memory>")
+
+
+async def test_server_asks_clients_to_use_memory_unprompted(tmp_path):
+    async with client(tmp_path, "claude-code") as s:
+        tools = {t.name: t.description for t in (await s.list_tools()).tools}
+    assert "without being asked" in tools["remember"]
+    assert "on your own" in tools["recall"]
+    instructions = build(tmp_path).instructions  # sent to every client when it connects
+    assert "without being asked" in instructions
+    assert "secrets" in instructions
