@@ -53,8 +53,8 @@ This format is the heart of the project. Document it fully in `docs/SPEC.md` and
 
 ```
 ~/lil-memory/            # the vault; any folder the user chooses
-├── global/              # scope "global"
-├── projects/acme-site/  # scope "projects/acme-site"
+├── global/              # scope "global": where lil memory keeps its notes
+├── (any folder)/        # optional folders the user makes by hand; their path is the scope
 ├── inbox/               # pending memories awaiting user approval (optional mode)
 ├── imports/chatgpt/     # raw imported conversations, one file each
 ├── imports/claude/
@@ -91,6 +91,7 @@ Field rules:
 - `source`: free text describing which client and model wrote it.
 - `supersedes` / `superseded_by`: legacy quoted wikilinks from when updates made new versions. Preserved on rewrite, never written.
 - Memories are a **living graph, not a versioned archive**: one note per subject, updated in place, so links to it keep working. One note per entity that matters (a person, place, product), linked from hub notes such as `favorite-designers`. History, if wanted, comes from git or the user's sync tool.
+- **Zettelkasten, not folders.** Each note holds one idea, written in the model's own words with the context it can confidently infer, never invented; the user's exact words only when nothing more can be inferred. A project is a hub note of type `project` that links its notes, which link back to it; lil memory does not create project folders. This is a mechanic for structure and retrieval, not a user-facing feature: `get` shows a note's links and backlinks, and `load_context` follows them (SPEC §8.3).
 - Unknown fields must be preserved on rewrite. Users will add their own properties in Obsidian.
 
 Writes are atomic and never silently overwrite another writer's work; the exact rules are in the Concurrency section. Frontmatter is written with a stable key order so git diffs stay clean.
@@ -105,7 +106,7 @@ Memory should feel like the agent's own. The server's instructions and the `reme
 |---|---|
 | `remember(content, type, title=None, scope="global", tags=[])` | Create a memory. `title` is a short descriptive name that becomes the filename, never with a number added: if it is taken, nothing is saved and the existing note is returned so the model can update it. Related memories are linked inside `content` with `[[title]]`; the result points out links that match no memory. Returns its id and path, plus up to 3 similar existing memories (FTS match). |
 | `recall(query, scope=None, type=None, tags=None, limit=10)` | Full-text search over active memories. Scope filter includes subfolders. |
-| `get(ref)` | Fetch one memory by id or filename. |
+| `get(ref)` | Fetch one memory by id or filename, with the titles of the notes it links to and the notes linking to it. |
 | `update(ref, content)` | Rewrite a memory in place with its full new text: same file, title and id, so links keep working. |
 | `forget(ref)` | Move the file to `.lil-memory/trash/<id>.md`. Recoverable by hand. |
 | `list_scopes()` | Folders with memory counts. Cheap orientation for the model. |
@@ -113,7 +114,7 @@ Memory should feel like the agent's own. The server's instructions and the `reme
 Plus:
 
 - Resource `memory://profile`: all active `preference` memories in `global/`, concatenated. The "who is this user" card.
-- Prompt `load_context(scope)`: returns the profile plus the most recent active memories in that scope. This is the core user journey: open any client, say "load my context for acme-site", and continue where you left off.
+- Prompt `load_context(project)`: returns the profile plus the project's hub note, the notes it links to and its backlinks (or, for older vaults, the memories in a folder of that name). This is the core user journey: open any client, say "load my context for acme-site", and continue where you left off.
 - Prompt `distill_import(path)`: instructs the client model to read an imported conversation and call `remember` for durable facts. Distillation happens in the client, never in the server.
 
 ### Returned content is data, not instructions

@@ -64,13 +64,14 @@ For ChatGPT and any other MCP client, see [Connect your AI](https://lilmemory.ni
 
 ## The format at a glance
 
-One memory is one Markdown file. Its folder is its scope.
+One memory is one Markdown file with one idea, linked to related memories with `[[wikilinks]]`, like a Zettelkasten. A project is a note that links all of its notes.
 
 ```
 ~/lil-memory/
 ├── global/prefers-british-spelling.md
-├── projects/acme-site/deploys-to-cloudflare.md
-└── .lil-memory/          # config and trash
+├── global/acme-site.md                  # a project: links every note about it
+├── global/acme-deploys-to-cloudflare.md # links back to [[acme-site]]
+└── .lil-memory/                         # config and trash
 ```
 
 ```markdown

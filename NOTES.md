@@ -116,3 +116,10 @@ Measured on the owner's MacBook, both in clean `uv venv -p 3.12` environments, a
 - Token estimates on the website use 4 characters per token.
 - Basic Memory's files on disk are clean (frontmatter with `title`, `type`, `permalink`). The website does not claim otherwise.
 
+## Zettelkasten and project hubs (2026-10-09)
+
+- Owner's decision: notes follow the Zettelkasten idea (one idea per note, in the model's words with confidently inferred context, never invented), and projects are hub notes rather than folders. It is a structure and retrieval mechanic, not a user-facing feature.
+- Backlinks use the existing FTS search plus one `LIKE` filter on the body for `[[stem]]`, `[[stem|` or `[[stem#`, so `[[acme-sites]]` does not count as a link to `acme-site`. No links table in the index.
+- `load_context(project)` loads the hub, what it links to and its backlinks, deduplicated; for older vaults it falls back to a folder of that name.
+- `index.py` (321 lines) and `server.py` (304 lines) are now slightly over the brief's ~300-line guideline.
+

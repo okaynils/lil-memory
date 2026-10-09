@@ -186,18 +186,72 @@ async def test_profile_resource(tmp_path):
         assert "stored user data" in text
 
 
-async def test_load_context_prompt(tmp_path):
+async def test_load_context_follows_the_project_hub_note(tmp_path):
     async with client(tmp_path) as s:
         await call(s, "remember", content="Likes short answers", type="preference")
-        await call(s, "remember", content="Acme uses Tailwind", type="fact", scope="projects/acme")
-        await call(s, "remember", content="Beta uses Bootstrap", type="fact", scope="projects/beta")
-        prompt = await s.get_prompt("load_context", {"scope": "projects/acme"})
+        await call(
+            s,
+            "remember",
+            type="project",
+            title="Acme site",
+            content="Client website for Acme. Stack: [[acme-uses-tailwind]].",
+        )
+        await call(
+            s,
+            "remember",
+            type="fact",
+            title="Acme uses Tailwind",
+            content="The [[acme-site]] is styled with Tailwind.",
+        )
+        await call(
+            s,
+            "remember",
+            type="decision",
+            title="Acme deploys to Cloudflare",
+            content="The [[acme-site|Acme site]] deploys to Cloudflare Pages.",
+        )
+        await call(s, "remember", type="fact", content="Beta uses Bootstrap, see [[acme-sites]].")
+        prompt = await s.get_prompt("load_context", {"project": "Acme site"})
         text = prompt.messages[0].content.text
         assert prompt.messages[0].role == "user"
-        assert "Likes short answers" in text and "Acme uses Tailwind" in text
+        assert "Likes short answers" in text and "Client website for Acme" in text
+        assert "styled with Tailwind" in text and "Cloudflare Pages" in text
+        assert text.count("Client website for Acme") == 1  # linked both ways, shown once
         assert "Bootstrap" not in text
-        missing = (await s.get_prompt("load_context", {"scope": "nope"})).messages[0].content.text
-        assert "No active memories in 'nope'" in missing and "projects/acme" in missing
+        missing = (await s.get_prompt("load_context", {"project": "nope"})).messages[0]
+        assert "No project note named 'nope'. Projects: acme-site." in missing.content.text
+
+
+async def test_load_context_still_reads_an_old_project_folder(tmp_path):
+    async with client(tmp_path) as s:
+        await call(s, "remember", content="Acme uses Tailwind", type="fact", scope="projects/acme")
+        await call(s, "remember", content="Beta uses Bootstrap", type="fact", scope="projects/beta")
+        text = (await s.get_prompt("load_context", {"project": "projects/acme"})).messages[0]
+        assert "Acme uses Tailwind" in text.content.text
+        assert "Bootstrap" not in text.content.text
+
+
+async def test_get_shows_links_both_ways(tmp_path):
+    async with client(tmp_path) as s:
+        await call(
+            s,
+            "remember",
+            type="preference",
+            title="Favorite designers",
+            content="Their favorite designers are [[dieter-rams]] and [[jony-ive]].",
+        )
+        await call(s, "remember", type="fact", title="Dieter Rams", content="German designer.")
+        await call(
+            s,
+            "remember",
+            type="fact",
+            title="Jony Ive",
+            content="British designer, one of their [[favorite-designers]].",
+        )
+        hub = await call(s, "get", ref="favorite-designers")
+        assert 'links_to="dieter-rams, jony-ive"' in hub and 'linked_from="jony-ive"' in hub
+        rams = await call(s, "get", ref="dieter-rams")
+        assert 'linked_from="favorite-designers"' in rams and "links_to" not in rams
 
 
 async def test_memory_saved_in_one_client_is_recalled_in_another(tmp_path):

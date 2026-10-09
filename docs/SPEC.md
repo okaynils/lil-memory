@@ -73,6 +73,7 @@ A memory's **scope** is the path of its parent folder relative to the vault root
 
 - Scope is never stored inside the file. Moving a file changes its scope.
 - `global` is the default scope.
+- Folders are optional. lil memory keeps its notes in `global` and groups related notes with hub notes and links instead (§8.3). Users may still organize files into folders by hand.
 - A **scope filter** `S` matches scope `S` and every scope that starts with `S/`. The filter `projects` matches `projects` and `projects/acme-site`, but not `projects-old`.
 
 When a writer creates a scope folder from user or model input, it MUST reject the scope if any of the following is true:
@@ -286,7 +287,17 @@ Readers resolve a wikilink as follows:
 
 A link that resolves to nothing is **broken**. A broken link is not an error for readers.
 
-lil memory 0.1 writes these links but never needs to follow them. These rules are for other tools, and for the planned `lint` command.
+lil memory follows these links to show a note's links and backlinks, and to load a project (§8.3).
+
+### 8.3 Hub notes and backlinks
+
+Notes follow the Zettelkasten idea: each holds one idea, and meaning comes from the links between them.
+
+- A **hub note** gathers related notes by linking to them. It is an ordinary memory, not a separate kind of file. For example, `favorite-designers` links one note per designer: `[[dieter-rams]]`, `[[jony-ive]]`.
+- A **project** is a hub note: a memory of type `project`, titled after the project, whose text links the project's notes. Each of those notes links back to it, for example `The [[acme-site]] is styled with Tailwind.` Writers SHOULD use project hub notes instead of project folders.
+- A note's **backlinks** are the active memories whose text contains a link to its stem: `[[stem]]`, `[[stem|alias]]` or `[[stem#heading]]`.
+
+To load a project, lil memory takes its hub note, the active notes it links to and its backlinks. For vaults that keep a project in a folder instead, it falls back to that folder's memories.
 
 ## 9. Writing files
 

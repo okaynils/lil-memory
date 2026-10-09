@@ -241,8 +241,10 @@ class Index:
         tags: list[str] | None = None,
         limit: int = 10,
         exclude: str | None = None,
+        links_to: str | None = None,
     ) -> list[dict]:
-        """Active memories matching the query and filters, best first.
+        """Active memories matching the query and filters, best first. `links_to` keeps only
+        memories whose text links to that stem: its backlinks.
 
         With no searchable words, returns the most recent matching memories instead.
         """
@@ -260,6 +262,9 @@ class Index:
         if exclude:
             where.append("f.path != ?")
             args.append(exclude)
+        if links_to:  # [[stem]], [[stem|alias]] or [[stem#heading]]
+            where.append("(" + " OR ".join(["fts.body LIKE ? ESCAPE '\\'"] * 3) + ")")
+            args += [f"%[[{_escape_like(links_to)}{end}%" for end in ("]]", "|", "#")]
         match = fts_query(query)
         if match is None:
             sql = f"SELECT {_COLUMNS} FROM files f JOIN fts ON fts.rowid = f.rowid WHERE "
