@@ -10,6 +10,7 @@ body { margin: 0; }
 .wrap { max-width: 42em; margin: 0 auto; padding: 0 1em; }
 header { background: #eee; border-bottom: 1px solid #ccc; padding: 1.5em 0 0.5em; }
 pre, table { display: block; overflow-x: auto; }
+table { width: fit-content; max-width: 100%; }
 img { max-width: 100%; height: auto; }
 </style>
 </head>
@@ -50,7 +51,7 @@ Tell one of them something and the others know it too.</li>
 and your AI sees the change within two seconds.</li>
 <li><b>Small and boring on purpose.</b> One small Python program with two dependencies.
 No account, no cloud, no API keys, no background service and no AI model of its own.
-The whole core is about 1,400 lines you can read in an afternoon. It starts in under half a second
+The whole core is about 1,250 lines of code you can read in an afternoon. It starts in under half a second
 and searches 10,000 memories in about 10 ms.</li>
 <li><b>An open format.</b> The file format is written down in <a href="https://github.com/okaynils/lil-memory/blob/main/docs/SPEC.md">SPEC.md</a>,
 so other tools can read and write your memories, and they outlive this project.</li>
@@ -68,14 +69,46 @@ so other tools can read and write your memories, and they outlive this project.<
 <tr><td><b>lil memory</b></td><td><b>Markdown files on your machine</b></td><td><b>Yes, through MCP</b></td><td><b>Yes, in Obsidian or any editor</b></td><td><b>One small Python program (MIT)</b></td></tr>
 </table>
 
-<p>Basic Memory is the closest relative and a good project. If you want a fuller knowledge-management system, look at it.
-lil memory does less on purpose: six tools, a fixed file format with a written spec, and a permissive license.</p>
+<h3 id="vs-basic-memory">lil memory and Basic Memory</h3>
+
+<p>Basic Memory is the closest relative: Markdown files, Obsidian, MCP. But it is a full knowledge-management platform,
+with semantic search, schemas, projects, workspaces and a paid cloud. lil memory is only the memory, and you can feel the difference:</p>
+
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th></th><th>lil memory</th><th>Basic Memory</th></tr>
+<tr><td>Installed size</td><td>28 MB</td><td>383 MB</td></tr>
+<tr><td>Packages installed</td><td>31</td><td>167</td></tr>
+<tr><td>Direct dependencies</td><td>2</td><td>42</td></tr>
+<tr><td>Lines of code</td><td>about 1,250</td><td>about 89,000</td></tr>
+<tr><td>Server ready to use</td><td>0.4 s</td><td>3.2 to 4.6 s</td></tr>
+<tr><td>Save a memory</td><td>4 ms</td><td>95 ms</td></tr>
+<tr><td>Search</td><td>3 ms</td><td>22 ms</td></tr>
+<tr><td>Tools the AI has to read on every request</td><td>6 (about 1,200 tokens)</td><td>21 (about 11,000 tokens)</td></tr>
+<tr><td>License</td><td>MIT</td><td>AGPL</td></tr>
+</table>
+
+<ul>
+<li><b>Light enough to forget about.</b> A thirteenth of the disk space and a fifth of the packages. No database drivers, no AI libraries, no web framework.</li>
+<li><b>Code you can actually read.</b> About 1,250 lines, seventy times less. It holds what your AI knows about you; you should be able to see everything that touches it.</li>
+<li><b>Instant.</b> Ready in under half a second, about 9 times sooner. Saves about 20 times faster and searches about 7 times faster.</li>
+<li><b>Leaves room for your conversation.</b> Every connected tool is described to the AI on every request.
+lil memory costs about 1,200 tokens of that; Basic Memory about 11,000. Six clear tools are also easier for a model to pick from than 21.</li>
+<li><b>Nothing to run or look after.</b> No projects or workspaces to set up, no database migrations, no file watcher,
+no automatic updater, no prerelease flags. The search index is a cache: delete it and it rebuilds.</li>
+<li><b>Made to be used, not managed.</b> It tells every connected AI to save what it learns about you on its own and to use it silently,
+and it is tested with several AIs writing to the same memory at once.</li>
+<li><b>Yours to build on.</b> MIT, not AGPL. Use it, change it or ship it inside your own product, no strings attached.</li>
+</ul>
+
+<p><small>Measured on 2026-10-09 on one MacBook at the same moment: Basic Memory 0.23.2 with default settings and lil memory 0.1,
+each installed in a clean Python 3.12 environment and driven over MCP the way an AI client does, with 200 notes each. Times are medians.
+Exact numbers vary by machine; the ratios are the point.</small></p>
 
 <h3>When something else fits better</h3>
 
 <ul>
 <li>You only use one AI and are happy with it. Its built-in memory is less work.</li>
-<li>You need search by meaning rather than by words. lil memory uses full-text search only; there are no embeddings.</li>
+<li>You need search by meaning rather than by words, schemas, or a hosted cloud with web and phone apps. Basic Memory has all three.</li>
 <li>You want one memory for a whole team. lil memory is built for one person.</li>
 </ul>
 

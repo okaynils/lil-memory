@@ -18,7 +18,7 @@ Most people use more than one AI, and each keeps its own memory on its own compa
 - **Yours, as plain files.** One Markdown file per memory, in a folder you own. Nothing to export, nothing to be locked into.
 - **Every AI, the same memory.** Claude, Codex, ChatGPT and any other MCP client, at the same time.
 - **Obsidian is the interface.** Memories are linked notes you can browse and fix by hand.
-- **Small on purpose.** One Python program, two dependencies, no account, no cloud, no API keys, no AI model of its own. About 1,400 lines.
+- **Small on purpose.** One Python program, two dependencies, no account, no cloud, no API keys, no AI model of its own. About 1,250 lines of code.
 
 | | Where your memory lives | Shared across AIs | What you need |
 |---|---|---|---|
@@ -29,7 +29,19 @@ Most people use more than one AI, and each keeps its own memory on its own compa
 | Basic Memory | Markdown files on your machine | Yes | A Python program (AGPL) |
 | **lil memory** | **Markdown files on your machine** | **Yes** | **One small Python program (MIT)** |
 
-Basic Memory is the closest relative; pick it if you want a fuller knowledge-management system. lil memory uses full-text search, not embeddings, and is built for one person, not a team. More on [the website](https://lilmemory.nils.me/#why).
+**Compared with Basic Memory**, the closest relative (measured on the same laptop, 200 notes each, driven over MCP):
+
+| | lil memory | Basic Memory |
+|---|---|---|
+| Installed size | 28 MB | 383 MB |
+| Direct dependencies | 2 | 42 |
+| Lines of code | ~1,250 | ~89,000 |
+| Server ready | 0.4 s | 3.2–4.6 s |
+| Save / search | 4 ms / 3 ms | 95 ms / 22 ms |
+| Tool text the AI reads every request | ~1,200 tokens | ~11,000 tokens |
+| License | MIT | AGPL |
+
+Basic Memory is a full knowledge-management platform, with semantic search, schemas, projects and a paid cloud. Pick it if you want those. lil memory is only the memory: nothing to set up or look after, code you can read in an afternoon, and it stays out of your AI's way. More on [the website](https://lilmemory.nils.me/#vs-basic-memory).
 
 ## Quickstart
 

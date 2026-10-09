@@ -106,3 +106,13 @@ Two writers that pass the "is it still active?" check at the same moment can bot
 - `rewrite` now checks mtime and size right before `os.replace`, as the brief always required; before, it only re-read the file.
 - The instructions ask for one note per entity that matters, linked from hub notes ("Favorite designers" → each designer). That is still just files and links, not a graph engine.
 
+## Comparison with Basic Memory (2026-10-09)
+
+Measured on the owner's MacBook, both in clean `uv venv -p 3.12` environments, at the same moment (load average 6 to 10, so absolute times are inflated for both):
+
+- Basic Memory 0.23.2 (`uv pip install --prerelease=allow basic-memory`): 383 MB venv, 167 packages, 42 direct dependencies (from its `pyproject.toml`, including pyright, pytest-aio, pytest-asyncio, litellm, openai, fastapi, asyncpg, psycopg, fastembed, sqlite-vec), 379 files and about 89,000 non-blank Python lines. 21 MCP tools whose definitions total 44,883 characters.
+- lil memory 0.1.0.dev0: 28 MB venv, 31 packages (most from the `mcp` SDK), 2 direct dependencies, 9 files and about 1,250 non-blank lines. 6 tools, 4,687 characters of definitions plus 1,703 of instructions.
+- Over MCP stdio, `HOME` pointed at a scratch folder: time to `initialize` was 3.2 to 4.6 s for Basic Memory and 0.35 to 0.65 s for lil memory. Writing 200 notes (`write_note` vs `remember`): median 95 ms vs 4 ms. Then 30 searches (`search_notes` vs `recall`): median 22 ms vs 3 ms.
+- Token estimates on the website use 4 characters per token.
+- Basic Memory's files on disk are clean (frontmatter with `title`, `type`, `permalink`). The website does not claim otherwise.
+
