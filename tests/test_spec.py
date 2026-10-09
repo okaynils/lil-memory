@@ -11,26 +11,29 @@ from lil_memory.frontmatter import KEY_ORDER
 SPEC = (Path(__file__).parent.parent / "docs" / "SPEC.md").read_text()
 EXAMPLES = SPEC[SPEC.index("## 12. Examples") : SPEC.index("## 13.")]
 # Each example file is introduced by a line naming its path in backticks.
-FILES = re.findall(r"`([^`]+\.md)`[^\n]*:\n\n```markdown\n(.*?)```", EXAMPLES, re.DOTALL)
+# A memory named after a title says so on that line: (title `Favorite designers`).
+FILES = re.findall(
+    r"`([^`]+\.md)`(?: \(title `([^`]+)`\))?[^\n]*:\n\n```markdown\n(.*?)```", EXAMPLES, re.DOTALL
+)
 
 
 def test_examples_were_found():
     assert len(FILES) == 5
 
 
-@pytest.mark.parametrize("path, text", [f for f in FILES if f[1].startswith("---")])
-def test_example_memories_are_canonical(path, text):
+@pytest.mark.parametrize("path, title, text", [f for f in FILES if f[2].startswith("---")])
+def test_example_memories_are_canonical(path, title, text):
     meta, body, malformed = vault.parse(text)
     assert not malformed
     assert vault.dump(meta, body) == text
 
 
-@pytest.mark.parametrize("path, text", FILES)
-def test_example_filenames_follow_the_slug_algorithm(path, text):
+@pytest.mark.parametrize("path, title, text", FILES)
+def test_example_filenames_follow_the_slug_algorithm(path, title, text):
     _, body, _ = vault.parse(text)
     stem = Path(path).stem
     if stem != "Client contacts":  # the hand-written note keeps its human filename
-        assert stem == vault.slugify(body)
+        assert stem == vault.slugify(title or body)
 
 
 def test_slug_example_in_section_4():

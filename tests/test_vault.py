@@ -335,63 +335,68 @@ def test_create_validates_input(tmp_path):
     assert not any(tmp_path.iterdir())
 
 
-def test_supersede(tmp_path):
+def test_update_rewrites_in_place(tmp_path):
     old = vault.create(tmp_path, "Deploys to Netlify.", "decision", "projects/acme", ["hosting"])
-    new, old_after = vault.supersede(tmp_path, old, "Deploys to Cloudflare Pages.", "test")
-    assert new.path == "projects/acme/deploys-to-cloudflare-pages.md"
+    new = vault.update(tmp_path, old.path, "Deploys to Cloudflare Pages.", "test 1.0")
+    assert new.path == old.path and new.id == old.id
     assert (new.type, new.tags, new.status) == ("decision", ["hosting"], "active")
-    assert new.meta["supersedes"] == "[[deploys-to-netlify]]"
-    assert old_after.status == "superseded"
-    assert old_after.meta["superseded_by"] == "[[deploys-to-cloudflare-pages]]"
-    assert old_after.id == old.id
-    assert old_after.body == "Deploys to Netlify."
-    assert old_after.meta["created"] == old.meta["created"]
+    assert new.body == "Deploys to Cloudflare Pages."
+    assert new.meta["created"] == old.meta["created"] and new.source == "test 1.0"
+    assert [p.name for p in (tmp_path / "projects/acme").iterdir()] == ["deploys-to-netlify.md"]
 
 
-def test_supersede_with_the_same_content_gets_a_suffix(tmp_path):
-    old = vault.create(tmp_path, "Same text", "fact")
-    new, _ = vault.supersede(tmp_path, old, "Same text")
-    assert new.stem == "same-text-2"
-
-
-def test_supersede_preserves_unknown_fields_and_hand_edits(tmp_path):
+def test_update_keeps_hand_added_fields(tmp_path):
     old = vault.create(tmp_path, "Original", "fact")
     path = tmp_path / old.path
-    path.write_text(
-        path.read_text().replace("---\nOriginal", "rating: 5\naliases: [x]\n---\nEdited by hand")
-    )
-    vault.supersede(tmp_path, old, "Replacement")  # `old` is stale; the file is re-read
-    after = vault.read(tmp_path, old.path)
-    assert after.body == "Edited by hand"
-    assert after.meta["rating"] == "5"
-    assert after.meta["aliases"] == ["x"]
+    path.write_text(path.read_text().replace("---\nOriginal", "rating: 5\naliases: [x]\n---\nOld"))
+    after = vault.update(tmp_path, old.path, "Extended text")
+    assert after.body == "Extended text"
+    assert after.meta["rating"] == "5" and after.meta["aliases"] == ["x"]
     assert list(after.meta)[-2:] == ["rating", "aliases"]
 
 
-def test_supersede_assigns_id_to_hand_written_note(tmp_path):
+def test_update_assigns_id_to_hand_written_note(tmp_path):
     write(tmp_path, "global/note.md", "No frontmatter")
-    vault.supersede(tmp_path, vault.read(tmp_path, "global/note.md"), "Better")
-    after = vault.read(tmp_path, "global/note.md")
-    assert after.id is not None and after.status == "superseded"
-    assert after.body == "No frontmatter"
+    after = vault.update(tmp_path, "global/note.md", "Better")
+    assert after.id is not None and after.body == "Better"
 
 
-def test_cannot_supersede_twice_or_malformed(tmp_path):
-    old = vault.create(tmp_path, "Old", "fact")
-    vault.supersede(tmp_path, old, "New")
-    with pytest.raises(VaultError, match="already superseded by"):
-        vault.supersede(tmp_path, vault.read(tmp_path, old.path), "Newer")
+def test_update_refuses_malformed_and_old_superseded_notes(tmp_path):
     write(tmp_path, "global/bad.md", "---\ntype: [oops\n---\nBody")
     with pytest.raises(VaultError, match="malformed"):
-        vault.supersede(tmp_path, vault.read(tmp_path, "global/bad.md"), "Fix")
+        vault.update(tmp_path, "global/bad.md", "Fix")
     assert (tmp_path / "global/bad.md").read_text() == "---\ntype: [oops\n---\nBody"
+    write(tmp_path, "global/old.md", '---\nstatus: superseded\nsuperseded_by: "[[new]]"\n---\nOld')
+    with pytest.raises(VaultError, match="old was replaced by"):
+        vault.update(tmp_path, "global/old.md", "Newer")
 
 
-def test_rewrite_keeps_file_permissions(tmp_path):
+def test_rewrite_refuses_a_file_that_changed_since_it_was_read(tmp_path):
+    m = vault.create(tmp_path, "Original", "fact")
+    st = os.stat(tmp_path / m.path)
+    (tmp_path / m.path).write_text("Edited in Obsidian meanwhile")
+    m.body = "Our change"
+    with pytest.raises(VaultError, match="changed while it was being updated"):
+        vault.rewrite(tmp_path, m, (st.st_mtime_ns, st.st_size))
+    assert (tmp_path / m.path).read_text() == "Edited in Obsidian meanwhile"
+    assert [p.name for p in (tmp_path / "global").iterdir()] == ["original.md"]  # no temp file
+
+
+def test_update_keeps_file_permissions(tmp_path):
     old = vault.create(tmp_path, "Old", "fact")
     os.chmod(tmp_path / old.path, 0o600)
-    vault.supersede(tmp_path, old, "New")
+    vault.update(tmp_path, old.path, "New")
     assert (tmp_path / old.path).stat().st_mode & 0o777 == 0o600
+
+
+def test_a_title_names_one_note_and_never_gets_a_number(tmp_path):
+    vault.create(tmp_path, "Dieter Rams and Jony Ive.", "preference", title="Favorite designers")
+    with pytest.raises(VaultError, match="'favorite-designers' already exists; update it"):
+        vault.create(tmp_path, "Also Naoto Fukasawa.", "preference", title="Favorite designers")
+    assert [p.name for p in (tmp_path / "global").iterdir()] == ["favorite-designers.md"]
+    # Without a title the name comes from the content and may get a number.
+    vault.create(tmp_path, "Same text", "fact")
+    assert vault.create(tmp_path, "Same text", "fact").stem == "same-text-2"
 
 
 def test_forget_moves_to_trash_and_handles_collisions(tmp_path):
@@ -404,15 +409,6 @@ def test_forget_moves_to_trash_and_handles_collisions(tmp_path):
         "Z.md"
     )
     assert (tmp_path / trashed).read_text() == vault.dump(second.meta, second.body)
-
-
-def test_failed_supersede_removes_the_new_file(tmp_path):
-    old = vault.create(tmp_path, "Old", "fact")
-    stale = vault.read(tmp_path, old.path)
-    vault.supersede(tmp_path, old, "First")  # someone else got there first
-    with pytest.raises(VaultError, match="already superseded"):
-        vault.create(tmp_path, "Second", "fact", supersedes=stale)
-    assert not (tmp_path / "global/second.md").exists()
 
 
 def test_create_names_the_file_after_the_title(tmp_path):

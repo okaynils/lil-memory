@@ -175,14 +175,17 @@ def _temp_file(directory: Path, name: str, text: str) -> str:
     return tmp
 
 
-def write_new(root: Path, scope: str, base: str, text: str, taken: Callable[[str], bool]) -> str:
-    """Atomically create <scope>/<unique stem>.md without overwriting anything (SPEC §9)."""
+def write_new(
+    root: Path, scope: str, base: str, text: str, taken: Callable[[str], bool], suffix: bool = True
+) -> str:
+    """Atomically create <scope>/<unique stem>.md without overwriting anything (SPEC §9).
+    Without `suffix`, the name is used as given or not at all."""
     directory = root / scope
     directory.mkdir(parents=True, exist_ok=True)
     tmp = _temp_file(directory, base, text)
     os.chmod(tmp, 0o644)
     try:
-        for n in count(1):
+        for n in count(1) if suffix else [1]:
             stem = base if n == 1 else f"{base}-{n}"
             if taken(stem):
                 continue
@@ -194,14 +197,19 @@ def write_new(root: Path, scope: str, base: str, text: str, taken: Callable[[str
             return f"{scope}/{stem}.md"
     finally:
         os.unlink(tmp)
-    raise AssertionError("unreachable")
+    raise VaultError(f"a memory titled {base!r} already exists; update it instead")
 
 
-def rewrite(root: Path, memory: Memory) -> None:
+def rewrite(root: Path, memory: Memory, expect: tuple[int, int]) -> None:
+    """Replace a file with `memory`, unless it changed since it was read (SPEC §9).
+    `expect` is the file's (mtime_ns, size) at that moment."""
     target = root / memory.path
     tmp = _temp_file(target.parent, target.name, dump(memory.meta, memory.body))
     try:
-        os.chmod(tmp, os.stat(target).st_mode & 0o777)
+        st = os.stat(target)
+        if (st.st_mtime_ns, st.st_size) != expect:
+            raise VaultError(f"{memory.path} changed while it was being updated; try again")
+        os.chmod(tmp, st.st_mode & 0o777)
         os.replace(tmp, target)
     except BaseException:
         os.unlink(tmp)
@@ -224,17 +232,15 @@ def create(
     scope: str = "global",
     tags: list[str] | None = None,
     source: str = "",
-    supersedes: Memory | None = None,
     taken: Callable[[str], bool] | None = None,
     title: str | None = None,
 ) -> Memory:
-    """Write a new active memory; if it supersedes another, mark that one too."""
+    """Write a new active memory. A title is used as the filename exactly, never with a
+    number added: one subject, one note."""
     if not content.strip():
         raise VaultError("content is empty")
     if type not in TYPES:
         raise VaultError(f"invalid type {type!r}: use one of {', '.join(TYPES)}")
-    if supersedes is not None:
-        _check_supersedable(supersedes)
     now = format_time(datetime.now(UTC))
     meta = {
         "id": new_id(),
@@ -244,53 +250,33 @@ def create(
         "source": source,
         "created": now,
         "updated": now,
-        "supersedes": f"[[{supersedes.stem}]]" if supersedes else "",
     }
-    text = dump(meta, content)
-    path = write_new(
-        root,
-        validate_scope(scope),
-        slugify((title or "").strip() or content),
-        text,
-        taken or disk_stems(root),
-    )
-    new = read(root, path)
-    if supersedes is not None:
-        try:
-            mark_superseded(root, supersedes.path, new.stem)
-        except BaseException:  # e.g. another writer superseded it first: undo our half
-            os.unlink(root / path)
-            raise
-    return new
+    title = (title or "").strip()
+    base = slugify(title or content)
+    taken = taken or disk_stems(root)
+    path = write_new(root, validate_scope(scope), base, dump(meta, content), taken, not title)
+    return read(root, path)
 
 
-def supersede(
-    root: Path, old: Memory, content: str, source: str = "", taken=None, title: str | None = None
-) -> tuple[Memory, Memory]:
-    """Replace `old` with new content in the same scope; returns (new, old)."""
-    new = create(root, content, old.type, old.scope, old.tags, source, old, taken, title)
-    return new, read(root, old.path)
-
-
-def mark_superseded(root: Path, path: str, new_stem: str) -> None:
-    fresh = read(root, path)  # re-read so a just-saved hand edit is not lost (SPEC §9)
-    _check_supersedable(fresh)
-    fresh.meta.update(
-        status="superseded",
-        superseded_by=f"[[{new_stem}]]",
-        updated=format_time(datetime.now(UTC)),
-    )
-    if fresh.id is None:
-        fresh.meta["id"] = new_id()
-    rewrite(root, fresh)
-
-
-def _check_supersedable(memory: Memory) -> None:
+def update(root: Path, path: str, content: str, source: str = "") -> Memory:
+    """Rewrite a memory's text in place, keeping its file, id and links (SPEC §10.2)."""
+    if not content.strip():
+        raise VaultError("content is empty")
+    st = os.stat(root / path)
+    memory = read(root, path)
     if memory.malformed:
-        raise VaultError(f"{memory.path} has malformed frontmatter; fix it by hand first")
+        raise VaultError(f"{path} has malformed frontmatter; fix it by hand first")
     if memory.status == "superseded":
         newer = memory.link("superseded_by") or "a newer memory"
-        raise VaultError(f"{memory.stem} is already superseded by {newer}")
+        raise VaultError(f"{memory.stem} was replaced by {newer}; update that one")
+    memory.meta["updated"] = format_time(datetime.now(UTC))
+    if source:
+        memory.meta["source"] = source
+    if not memory.meta.get("id"):  # e.g. a note written by hand in Obsidian
+        memory.meta["id"] = new_id()
+    memory.body = content.strip()
+    rewrite(root, memory, (st.st_mtime_ns, st.st_size))
+    return read(root, path)
 
 
 def forget(root: Path, path: str) -> str:

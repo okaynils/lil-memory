@@ -97,3 +97,12 @@ Two writers that pass the "is it still active?" check at the same moment can bot
 
 - Claude Code passes MCP server instructions to the model but truncates them at about 2,048 characters (seen in a real session on 2026-10-09: ours were 2,051 and lost their last line). `tests/test_server.py` keeps them under 1,900 and checks that the prompt-injection line at the end survives.
 - Codex does not pass them at all; `install codex` copies them into `~/.codex/AGENTS.md` instead.
+
+## Living graph instead of versions (2026-10-09)
+
+- Owner's decision: memories are a living knowledge graph, not a versioned archive. `update` now rewrites the note in place (same file, title and id), so `[[links]]` to it keep working.
+- The "-2" duplicates had two causes: `update` wrote a new file whose title collided with the old one, and `remember` silently added `-2` when the model reused a title. Now a titled `remember` never adds a number: it returns the existing note so the model updates it.
+- The `supersedes` parameter, the supersede chain and its concurrency rule are gone. `superseded`, `supersedes` and `superseded_by` are legacy: still read (and kept out of search), preserved on rewrite, never written. SPEC.md documents this.
+- `rewrite` now checks mtime and size right before `os.replace`, as the brief always required; before, it only re-read the file.
+- The instructions ask for one note per entity that matters, linked from hub notes ("Favorite designers" → each designer). That is still just files and links, not a graph engine.
+

@@ -116,8 +116,8 @@ def test_search_filters(tmp_path, idx):
 
 
 def test_search_excludes_inactive_and_non_memories(tmp_path, idx):
-    old = vault.create(tmp_path, "Deploys to Netlify", "decision")
-    vault.supersede(tmp_path, old, "Deploys to Cloudflare")
+    write(tmp_path, "global/old.md", "---\nstatus: superseded\n---\nDeploys to Netlify")
+    vault.create(tmp_path, "Deploys to Cloudflare", "decision")
     write(tmp_path, "inbox/pending.md", "Deploys to Fly")
     write(tmp_path, "imports/chatgpt/chat.md", "Deploys to Heroku")
     write(tmp_path, "README.md", "Deploys to Render")
@@ -199,8 +199,8 @@ def test_stem_taken_covers_imports_and_root(tmp_path, idx):
 def test_scopes_and_stats(tmp_path, idx):
     vault.create(tmp_path, "One", "fact")
     vault.create(tmp_path, "Two", "fact")
-    old = vault.create(tmp_path, "Three", "fact", "projects/x")
-    vault.supersede(tmp_path, old, "Four")
+    write(tmp_path, "projects/x/three.md", "---\nstatus: superseded\n---\nThree")
+    vault.create(tmp_path, "Four", "fact", "projects/x")
     write(tmp_path, "global/broken.md", "---\n[unclosed\n---\nBody")
     idx.refresh(force=True)
     assert idx.scopes() == [("global", 3), ("projects/x", 1)]

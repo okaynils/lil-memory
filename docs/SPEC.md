@@ -111,7 +111,9 @@ Text without Latin letters (for example CJK) reduces to `memory`, `memory-2`, an
 
 Slugs MUST be unique **across the whole vault**, not just within one folder, so that a wikilink `[[stem]]` points to exactly one file. Uniqueness is checked **case-insensitively** against the stems of every `.md` file whose path has no dot-prefixed component. This includes files under `imports/` and files at the root, because Obsidian links to them too.
 
-If `slug` is taken, try `slug-2`, then `slug-3`, and so on, until a free name is found.
+A title names a subject, and one subject has one note. So when a writer was given a title and its slug is taken, it MUST NOT create the memory; it reports the existing memory instead, so that the caller can update it (§10.2).
+
+When the slug comes from the content and is taken, the writer tries `slug-2`, then `slug-3`, and so on, until a free name is found.
 
 Users may still make duplicate stems by hand. Readers MUST handle them (§8).
 
@@ -162,8 +164,8 @@ Writers MUST NOT rewrite a file whose frontmatter is malformed. They MUST report
 | `source` | free text: the client and model that wrote the memory, e.g. `claude-desktop / claude-opus-5.5` | SHOULD | empty |
 | `created` | timestamp (§6.3) | always | the file's mtime |
 | `updated` | timestamp (§6.3) | always | the value of `created` |
-| `supersedes` | wikilink (§8.2) to the memory this one replaces | if set | none |
-| `superseded_by` | wikilink to the memory that replaced this one | if set | none |
+| `supersedes` | legacy (see below): wikilink (§8.2) to the memory this one replaced | never | none |
+| `superseded_by` | legacy (see below): wikilink to the memory that replaced this one | never | none |
 
 Field names are case-sensitive. Readers MUST lowercase the values of `type` and `status` before comparing them.
 
@@ -171,7 +173,7 @@ Field names are case-sensitive. Readers MUST lowercase the values of `type` and 
 
 - `active`: a current memory. Search returns it.
 - `pending`: written by an agent but not yet approved by the user. Search does not return it by default.
-- `superseded`: replaced by a newer memory. Search does not return it, but it can still be fetched directly. History is kept, never overwritten.
+- `superseded`: legacy (see below). Search does not return it, but it can still be fetched directly.
 
 **Type meanings:**
 
@@ -182,6 +184,8 @@ Field names are case-sensitive. Readers MUST lowercase the values of `type` and 
 - `note`: anything else. This is also the default.
 
 Status is the only thing that decides whether a memory is active. A memory MAY have `superseded_by` while its status is `active`, for example if the user reverted a change by hand. In that case it is treated as active.
+
+**Legacy supersession.** Before format 0.1 was final, an update wrote a new memory and marked the old one `superseded`, with `supersedes` and `superseded_by` links between them. Memories are now a living graph: an update rewrites the note in place (§10.2), and writers no longer set `superseded`, `supersedes` or `superseded_by`. Readers still accept them as described here, and writers preserve them on rewrite like any other field. Users who want a history of their notes can keep the vault in git or in a sync tool with versions.
 
 **Tags:**
 
@@ -294,11 +298,11 @@ lil memory 0.1 writes these links but never needs to follow them. These rules ar
 
 If anything fails, the writer removes the temporary file.
 
-**No clobbering.** A writer that creates a new memory MUST NOT overwrite an existing file. Several writer processes can share one vault, because each AI client starts its own server. A writer SHOULD therefore place new files with an operation that fails if the target exists, such as `link(2)` of the temporary file followed by `unlink`. If placement fails, the writer goes to the next suffix in §4.2.
+**No clobbering.** A writer that creates a new memory MUST NOT overwrite an existing file. Several writer processes can share one vault, because each AI client starts its own server. A writer SHOULD therefore place new files with an operation that fails if the target exists, such as `link(2)` of the temporary file followed by `unlink`. If placement fails, the writer goes to the next suffix in §4.2, or, for a titled memory, reports that the title is taken.
 
 **Minimal writes.** Writers MUST NOT modify files they were not asked to change. Reading or indexing never writes to memory files.
 
-**Lost updates.** When rewriting an existing file, a writer SHOULD read it again immediately before writing. That way a recent edit made in Obsidian is merged into the rewrite rather than overwritten.
+**Lost updates.** When rewriting an existing file, a writer reads it, builds the new content, and then, immediately before moving the temporary file into place, checks that the file's modification time and size are still what they were when it was read. If they changed, for example because the user just saved an edit in Obsidian, the writer MUST NOT overwrite it: it reports an error and the caller can read the file again and retry.
 
 ## 10. Operations
 
@@ -313,20 +317,17 @@ These operations define how a writer changes the vault. Tool names in parenthese
    - `status: active`
    - the given tags and source
    - `created` and `updated` set to the current time.
-3. Write `<scope>/<slug>.md` (§4, §9).
-4. If the new memory supersedes another one, set `supersedes` on the new file and apply step 3 of §10.2 to the old file.
+3. Write `<scope>/<slug>.md`, with the slug from the title if one is given, otherwise from the content (§4, §9). If a title's slug is taken, report the existing memory instead (§4.2).
 
-### 10.2 Supersede (`update`)
+### 10.2 Update (`update`)
 
-To replace memory **old** with new content:
+Memories are a living graph: an update changes a note in place, so links to it keep working.
 
-1. Resolve **old**. If its status is `superseded`, it is an error that names the current memory from `superseded_by`. If its frontmatter is malformed, it is an error (§6.1).
-2. **Write the new memory first.** It uses the same scope as **old**, copies `type` and `tags` from **old**, and sets `supersedes: "[[<old stem>]]"`. Its slug comes from the new title if one is given, otherwise from the new content (§4.1). Otherwise it follows §10.1.
-3. **Then rewrite old.** Set `status: superseded`, set `superseded_by: "[[<new stem>]]"` and set `updated` to now. If **old** has no id, give it one. The body is unchanged and unknown fields are preserved.
+1. Resolve the memory. If its frontmatter is malformed, it is an error (§6.1). If its status is the legacy `superseded`, it is an error that names the memory from `superseded_by`.
+2. Replace the body with the new content. Set `updated` to now and `source` to the writer. If the memory has no id, give it one. The path, title, id, `created`, `type`, `tags` and unknown fields stay as they are.
+3. Rewrite the file atomically, checking that it did not change since step 1 (§9).
 
-Because of this order, a crash between steps 2 and 3 leaves two active memories, which is recoverable. It never leaves a superseded memory that points to nothing.
-
-If step 3 fails, the writer deletes the file it wrote in step 2 and reports the error. For example, another writer may have superseded **old** in the meantime, or its frontmatter may have become malformed. That way a failed operation leaves nothing behind that the caller might duplicate by retrying.
+To extend a note, the caller passes its full new text: what still holds, its links, and what is new.
 
 ### 10.3 Forget (`forget`)
 
@@ -385,61 +386,54 @@ tags:
 source: claude-desktop / claude-opus-5.5
 created: 2026-10-05T09:12:00Z
 updated: 2026-10-05T09:12:00Z
-supersedes: "[[uses-american-spelling]]"
 ---
 Prefers British spelling and short paragraphs in client-facing copy.
 
 Related: [[acme-site-style-guide]]
 ```
 
-### 12.2 Supersede, before and after
+### 12.2 Update in place, before and after
 
-Before, `projects/acme-site/the-acme-site-deploys-to-netlify.md`:
+`global/favorite-designers.md` (title `Favorite designers`):
 
 ```markdown
 ---
 id: 01J9XJ0000AAAAAAAAAAAAAAAA
-type: decision
+type: preference
 status: active
-tags:
-  - hosting
+source: claude-desktop / claude-opus-5.5
 created: 2026-09-01T10:00:00Z
 updated: 2026-09-01T10:00:00Z
 ---
-The acme site deploys to Netlify.
+Their favorite designer is [[dieter-rams]].
 ```
 
-After `update(ref="the-acme-site-deploys-to-netlify", content="The acme site deploys to Cloudflare Pages since October.")`, the old file `projects/acme-site/the-acme-site-deploys-to-netlify.md` is rewritten:
+After `update(ref="favorite-designers", content="Their favorite designers are [[dieter-rams]] and [[jony-ive]].")`, the same file `global/favorite-designers.md` (title `Favorite designers`) reads:
 
 ```markdown
 ---
 id: 01J9XJ0000AAAAAAAAAAAAAAAA
-type: decision
-status: superseded
-tags:
-  - hosting
+type: preference
+status: active
+source: claude-code / claude-opus-5.5
 created: 2026-09-01T10:00:00Z
 updated: 2026-10-05T11:30:00Z
-superseded_by: "[[the-acme-site-deploys-to-cloudflare]]"
 ---
-The acme site deploys to Netlify.
+Their favorite designers are [[dieter-rams]] and [[jony-ive]].
 ```
 
-And a new file is created, `projects/acme-site/the-acme-site-deploys-to-cloudflare.md`:
+The note is a hub: each designer has a note of their own, which the hub links to. For example, `global/jony-ive.md` (title `Jony Ive`):
 
 ```markdown
 ---
 id: 01J9XQ5V2C8N4H7K3M9P6R1T0W
-type: decision
+type: fact
 status: active
-tags:
-  - hosting
 source: claude-code / claude-opus-5.5
 created: 2026-10-05T11:30:00Z
 updated: 2026-10-05T11:30:00Z
-supersedes: "[[the-acme-site-deploys-to-netlify]]"
 ---
-The acme site deploys to Cloudflare Pages since October.
+Jony Ive is a British designer, known for his work at Apple. One of their [[favorite-designers]].
 ```
 
 ### 12.3 A note written by hand in Obsidian
@@ -458,7 +452,7 @@ Readers treat it as follows:
 - `type: note`, `status: active`, no tags
 - `created` and `updated` from the file's mtime.
 
-It can be found by search and fetched with `get("Client contacts")`. The file is not modified unless it is superseded or forgotten.
+It can be found by search and fetched with `get("Client contacts")`. The file is not modified unless it is updated or forgotten.
 
 ### 12.4 User properties are preserved
 
@@ -474,5 +468,5 @@ aliases:
 ## 13. Known limitations of version 0.1
 
 - **Slugs for non-Latin text** all become `memory`, `memory-2`, and so on (§4.1). Users can rename the files.
-- **Concurrent supersedes.** If two writers supersede the same memory at the same moment, both new memories stay `active`, and the old one's `superseded_by` names whichever writer finished last. Nothing is lost, and the user can supersede or forget one of them.
+- **Concurrent updates.** If two writers update the same memory at the same moment, the check in §9 makes most of the later ones fail and retry, but the moment between the check and the move is not covered. The last writer to finish wins.
 - **Uniqueness across folders** depends on the writer knowing about every existing file (§4.2). lil memory checks the index shared by all its processes, which is up to 2 seconds behind files created by hand. Two writers creating the same slug in *different* folders at the same moment can also produce a duplicate stem. Within one folder, the no-clobber rule in §9 always prevents it. Readers already handle duplicates (§8).

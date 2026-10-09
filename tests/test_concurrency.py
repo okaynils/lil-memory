@@ -143,23 +143,17 @@ def test_many_processes_create_the_index_at_once(tmp_path):
     assert results == [str({"memories": 1, "active": 1, "malformed": 0})] * PROCESSES
 
 
-def test_concurrent_updates_of_one_memory_keep_every_version(root):
-    vault.create(root, "contested", "decision")
+def test_concurrent_updates_of_one_memory_never_corrupt_or_duplicate_it(root):
+    vault.create(root, "Version from nobody", "decision", title="contested")
     Index(root).refresh(force=True)
     start_at = time.time() + 2.0
-    results = run(update_same, [(str(root), w, start_at) for w in range(4)])
+    results = run(update_same, [(str(root), w, start_at) for w in range(PROCESSES)])
     succeeded = [r for r in results if not r.startswith("error")]
     assert succeeded, results
-    for r in results:  # losers may see "already superseded", never anything else
-        assert not r.startswith("error") or "already superseded" in r, r
+    for r in results:  # a loser is told to try again; it never overwrites a newer write blindly
+        assert not r.startswith("error") or "changed while it was being updated" in r, r
 
-    old = vault.read(root, "global/contested.md")
-    assert old.status == "superseded"
-    versions = [m for m in map(lambda p: vault.read(root, p), _paths(root)) if m.path != old.path]
-    assert len(versions) == len(succeeded)
-    assert all(m.meta["supersedes"] == "[[contested]]" for m in versions)
-    assert old.meta["superseded_by"] in {f"[[{m.stem}]]" for m in versions}
-
-
-def _paths(root: Path) -> list[str]:
-    return [p for p, _, memory in vault.scan(root) if memory]
+    assert [p.name for p in (root / "global").iterdir()] == ["contested.md"]  # no copies, no temps
+    final = vault.read(root, "global/contested.md")
+    assert not final.malformed and final.status == "active"
+    assert final.body in {f"Version from worker {w}" for w in range(PROCESSES)}

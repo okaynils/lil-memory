@@ -72,7 +72,7 @@ async def test_remember_reports_similar_memories(tmp_path):
     async with client(tmp_path) as s:
         await call(s, "remember", content="The office wifi password is on the fridge", type="fact")
         text = await call(s, "remember", content="Office wifi password changed", type="fact")
-        assert "Similar existing memories" in text
+        assert "Similar memories" in text
         assert 'title="the-office-wifi-password-is-on"' in text
         assert 'title="office-wifi-password-changed"' not in text  # not itself
 
@@ -89,21 +89,21 @@ async def test_remember_rejects_bad_input_without_writing(tmp_path):
     assert not (tmp_path / "global").exists()
 
 
-async def test_remember_with_supersedes(tmp_path):
+async def test_remember_points_to_an_existing_title_instead_of_duplicating(tmp_path):
     async with client(tmp_path) as s:
-        await call(s, "remember", content="Uses American spelling", type="preference")
-        text = await call(
-            s,
-            "remember",
-            content="Prefers British spelling",
-            type="preference",
-            supersedes="uses-american-spelling",
+        await call(
+            s, "remember", content="Dieter Rams.", type="preference", title="Favorite designers"
         )
-        assert "It supersedes uses-american-spelling." in text
-        old = vault.read(tmp_path, "global/uses-american-spelling.md")
-        assert old.status == "superseded"
-        assert old.meta["superseded_by"] == "[[prefers-british-spelling]]"
-        assert "American" not in await call(s, "recall", query="spelling")
+        text = await call(
+            s, "remember", content="Jony Ive.", type="preference", title="favorite designers"
+        )
+        assert "A memory titled favorite-designers already exists. Nothing was saved." in text
+        assert "Dieter Rams." in text and "call update" in text
+        await call(
+            s, "update", ref="favorite-designers", content="[[dieter-rams]] and [[jony-ive]]."
+        )
+    assert [p.name for p in (tmp_path / "global").iterdir()] == ["favorite-designers.md"]
+    assert vault.read(tmp_path, "global/favorite-designers.md").body.startswith("[[dieter-rams]]")
 
 
 async def test_get_by_id_title_and_path(tmp_path):
@@ -127,21 +127,18 @@ async def test_get_reports_ambiguity(tmp_path):
         assert "two" in await call(s, "get", ref="b/same")
 
 
-async def test_update_supersedes_and_keeps_history(tmp_path):
+async def test_update_edits_the_note_in_place(tmp_path):
     async with client(tmp_path) as s:
         await call(s, "remember", content="Deploys to Netlify", type="decision", scope="projects/x")
+        before = vault.read(tmp_path, "projects/x/deploys-to-netlify.md")
         text = await call(s, "update", ref="deploys-to-netlify", content="Deploys to Cloudflare")
-        assert "It supersedes deploys-to-netlify." in text
+        assert text.startswith("Updated deploys-to-netlify (id ")
         found = await call(s, "recall", query="deploys")
-        assert "Cloudflare" in found and "Netlify" not in found
-        old = await call(s, "get", ref="deploys-to-netlify")
-        assert 'status="superseded"' in old
-        assert 'superseded_by="[[deploys-to-cloudflare]]"' in old
-        new = vault.read(tmp_path, "projects/x/deploys-to-cloudflare.md")
-        assert (new.type, new.scope) == ("decision", "projects/x")
-        assert "already superseded" in await call_error(
-            s, "update", ref="deploys-to-netlify", content="Deploys to Fly"
-        )
+        assert "Cloudflare" in found and "Netlify</" not in found
+        after = vault.read(tmp_path, "projects/x/deploys-to-netlify.md")
+        assert (after.id, after.type, after.scope) == (before.id, "decision", "projects/x")
+        assert after.body == "Deploys to Cloudflare"
+    assert len(list((tmp_path / "projects/x").iterdir())) == 1
 
 
 async def test_forget_moves_to_trash(tmp_path):
@@ -236,8 +233,8 @@ async def test_hand_renamed_file_is_found_by_get(tmp_path):
         await call(s, "recall", query="old")
         os.rename(tmp_path / "global/old-name.md", tmp_path / "global/new-name.md")
         text = await call(s, "update", ref="new-name", content="Renamed note")
-        assert "It supersedes new-name." in text
-        assert vault.read(tmp_path, "global/new-name.md").status == "superseded"
+        assert text.startswith("Updated new-name ")
+        assert vault.read(tmp_path, "global/new-name.md").body == "Renamed note"
 
 
 def test_frame_escapes_attributes_and_closing_tags():
@@ -300,15 +297,10 @@ async def test_titles_name_files_and_links_connect_memories(tmp_path):
         assert "These links match no memory yet: [[Favorite NFL team]]." in text
 
 
-async def test_update_can_retitle_and_checks_links(tmp_path):
+async def test_update_checks_links(tmp_path):
     async with client(tmp_path) as s:
         await call(s, "remember", content="Likes the Raiders", type="preference", title="NFL team")
         text = await call(
-            s,
-            "update",
-            ref="nfl-team",
-            content="Now a 49ers fan, see [[no-such-memory]].",
-            title="Favorite NFL team",
+            s, "update", ref="nfl-team", content="Now a 49ers fan, see [[no-such-memory]]."
         )
-        assert "Saved favorite-nfl-team " in text and "It supersedes nfl-team." in text
-        assert "[[no-such-memory]]" in text
+        assert text.startswith("Updated nfl-team ") and "[[no-such-memory]]" in text

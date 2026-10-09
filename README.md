@@ -75,7 +75,7 @@ updated: 2026-10-05T09:12:00Z
 Prefers British spelling and short paragraphs in client-facing copy.
 ```
 
-- Updating a memory never overwrites it. The old file is marked `superseded` and links to the new one.
+- Memories are a living graph: updating a memory edits the note in place, so links to it keep working. Each subject or entity that matters gets one note, linked from hub notes such as `favorite-designers`.
 - Forgetting a memory moves it to `.lil-memory/trash/`.
 - The full format is in [docs/SPEC.md](docs/SPEC.md). Other tools can implement it without reading this code.
 

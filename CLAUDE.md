@@ -76,7 +76,6 @@ tags: [writing, tone]
 source: claude-desktop / claude-opus-5.5
 created: 2026-10-05T09:12:00Z
 updated: 2026-10-05T09:12:00Z
-supersedes: "[[uses-american-spelling]]"
 ---
 Prefers British spelling and short paragraphs in client-facing copy.
 
@@ -87,10 +86,11 @@ Field rules:
 
 - `id`: ULID, generated with a small stdlib function (no dependency). Stable forever; filenames may change, ids do not.
 - `type`: one of `fact`, `preference`, `project`, `decision`, `note`.
-- `status`: `active`, `pending` (in inbox), or `superseded`.
+- `status`: `active` or `pending` (in inbox). `superseded` is legacy: readers accept it and keep such memories out of search; writers no longer set it.
 - `tags`: YAML list, Obsidian-compatible (no `#`).
 - `source`: free text describing which client and model wrote it.
-- `supersedes` / `superseded_by`: quoted wikilinks, so they show up as links in Obsidian properties and graph view.
+- `supersedes` / `superseded_by`: legacy quoted wikilinks from when updates made new versions. Preserved on rewrite, never written.
+- Memories are a **living graph, not a versioned archive**: one note per subject, updated in place, so links to it keep working. One note per entity that matters (a person, place, product), linked from hub notes such as `favorite-designers`. History, if wanted, comes from git or the user's sync tool.
 - Unknown fields must be preserved on rewrite. Users will add their own properties in Obsidian.
 
 Writes are atomic and never silently overwrite another writer's work; the exact rules are in the Concurrency section. Frontmatter is written with a stable key order so git diffs stay clean.
@@ -103,10 +103,10 @@ Memory should feel like the agent's own. The server's instructions and the `reme
 
 | Tool | Purpose |
 |---|---|
-| `remember(content, type, title=None, scope="global", tags=[], supersedes=None)` | Create a memory. `title` is a short descriptive name that becomes the filename. Related memories are linked inside `content` with `[[title]]`; the result points out links that match no memory. Returns its id and path, plus up to 3 similar existing memories (FTS match) so the model can choose to update instead. Never blocks on similarity. |
+| `remember(content, type, title=None, scope="global", tags=[])` | Create a memory. `title` is a short descriptive name that becomes the filename, never with a number added: if it is taken, nothing is saved and the existing note is returned so the model can update it. Related memories are linked inside `content` with `[[title]]`; the result points out links that match no memory. Returns its id and path, plus up to 3 similar existing memories (FTS match). |
 | `recall(query, scope=None, type=None, tags=None, limit=10)` | Full-text search over active memories. Scope filter includes subfolders. |
 | `get(ref)` | Fetch one memory by id or filename. |
-| `update(ref, content, title=None)` | Supersede: write a new memory, mark the old one `superseded` with `superseded_by`. History is never overwritten. |
+| `update(ref, content)` | Rewrite a memory in place with its full new text: same file, title and id, so links keep working. |
 | `forget(ref)` | Move the file to `.lil-memory/trash/<id>.md`. Recoverable by hand. |
 | `list_scopes()` | Folders with memory counts. Cheap orientation for the model. |
 
@@ -132,9 +132,9 @@ Every AI client starts its own server process, so several lil memory processes (
 
 **Creating a file never overwrites an existing one.** Checking whether a name is free and then writing is a race: two processes can both see the name as free, and `os.replace` would let the second silently destroy the first. Instead, write the content to a temp file in the same directory, then `os.link(temp, target)`, which fails with `FileExistsError` if the target exists. On failure, try the next suffix (`-2`, `-3`, ...). Then remove the temp file. This gives atomic content (no reader ever sees a half-written file) and race-free naming. If the platform or filesystem doesn't support hard links, fall back to `os.open(target, O_CREAT | O_EXCL)` to claim the name, write and fsync, and accept the brief window of a partial file.
 
-**Modifying an existing file checks for changes first.** Rewriting a file (marking it superseded, for instance) is read, modify, write. Before the final `os.replace`, re-check the file's mtime and size against what was read. If they changed, re-read and re-apply the change once; if it changed again, return a clear error rather than overwriting. This protects edits made in Obsidian as well as edits from other processes.
+**Modifying an existing file checks for changes first.** Rewriting a file (an `update`) is read, modify, write. Before the final `os.replace`, re-check the file's mtime and size against what was read. If they changed, return a clear error rather than overwriting; the model can read the note again and retry. This protects edits made in Obsidian as well as edits from other processes.
 
-**Supersession has one winner.** If two clients `update` the same memory at once, both new memories get created (creation is safe), but only one can be recorded as the successor. If the old memory is already superseded when the write happens, the later call follows `superseded_by` links to the current head of the chain and supersedes that instead: its new memory's `supersedes` points to the head, and the head is marked superseded by it. Its result tells the model this happened. No memory is orphaned, the chain stays linear, and the newest write is the current version.
+**One subject, one note.** A titled `remember` never adds `-2`: if the title's file exists, or another process claims it first, the call reports the existing note instead. Only content-derived names (no title) get `-2`, `-3`. If two clients `update` the same note at once, the change check above makes the later one fail and retry; the brief window between the check and the move means the last writer can still win, which is accepted.
 
 **The index is shared and safe for several processes:**
 
@@ -143,7 +143,7 @@ Every AI client starts its own server process, so several lil memory processes (
 - Keep write transactions short: parse files before opening the transaction, not inside it.
 - Make every index write idempotent (upserts keyed by path), so two processes refreshing the same changed file at once is harmless.
 
-**Tests.** A multiprocess test in `tests/test_concurrency.py` spawns several processes that each call `remember` with the same content and title simultaneously, then asserts that every write produced its own file and none was lost. A second test races `update` calls on one memory and asserts a single linear supersede chain. A third has processes write and refresh the index concurrently and asserts no "database is locked" errors. These run in the normal test suite.
+**Tests.** A multiprocess test in `tests/test_concurrency.py` spawns several processes that each call `remember` with the same content simultaneously, then asserts that every write produced its own file and none was lost. A second test races `update` calls on one memory and asserts that the note is never corrupted or duplicated and that losers get the clear retry error. A third has processes write and refresh the index concurrently and asserts no "database is locked" errors. These run in the normal test suite.
 
 ## Transports
 
@@ -199,7 +199,7 @@ scripts/bench.py
 
 **v0.2 — Migration and reach.** ChatGPT and Claude importers, `distill_import` prompt, HTTP transport at a secret URL, `install` for Cursor. Done when: a real ChatGPT export imports without crashing and its conversations are findable via `recall`.
 
-**v0.3 — Hygiene.** Optional inbox mode (agent writes land in `inbox/` as `pending` until the user moves them or approves via CLI), per-client read-only option, `lil-memory lint` to find duplicates, broken supersede links and malformed frontmatter.
+**v0.3 — Hygiene.** Optional inbox mode (agent writes land in `inbox/` as `pending` until the user moves them or approves via CLI), per-client read-only option, `lil-memory lint` to find duplicates, broken links and malformed frontmatter.
 
 Anything not on this list needs the owner's approval first.
 
