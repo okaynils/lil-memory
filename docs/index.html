@@ -102,14 +102,16 @@ Run <code>lil-memory doctor</code> if something does not work.</p>
 
 <h2 id="usage">Usage</h2>
 
-<p><b>Most of the time you do nothing.</b> lil memory tells every connected AI to use it on its own:</p>
+<p><b>Most of the time you do nothing.</b> lil memory tells every connected AI to treat it as its own memory, and to use it constantly and silently:</p>
 
 <ul>
-<li>When you start working on something, it looks up your preferences and that project's memories.</li>
-<li>When you say something that should still matter next time, it saves it right away.
-"I don't like that, keep it shorter", "we use pnpm here" or "let's go with Postgres, it's what the team knows" each become a memory.</li>
-<li>Saving happens quietly on the side. The conversation carries on as normal: say "I like nature" and it saves that, then talks about nature with you.
-It does not mention the memory; your client shows the tool call. Say "forget that" if it got it wrong.</li>
+<li>When you start a conversation or a task, it looks up what it knows about you and the project, and simply uses it, as if it had always known.</li>
+<li>Whenever you reveal something about yourself that could matter later, it saves it right away:
+likes and dislikes, interests, your work and tools, habits, goals, the people in your life, corrections and decisions.
+"I don't like that, keep it shorter", "we use pnpm here" or "I just moved to Stockholm" each become a memory.</li>
+<li>It never talks about its memory. Say "I like nature" and it saves that, then simply talks about nature with you.
+Your client still shows the tool calls.</li>
+<li>Ask "what do you remember about me?" or "why did you suggest that?" and it tells you which memories it used. Say "forget that" if it got something wrong.</li>
 <li>Each memory gets a short, descriptive title and is linked to related memories, like notes in Obsidian.
 Say "my favorite team are the 49ers" and later "my favorite player is George Kittle": you get <code>favorite-nfl-team.md</code> and <code>favorite-football-player.md</code>, linked to each other in Obsidian's graph.</li>
 <li>It does not save one-off requests, temporary details, its own guesses, or secrets such as passwords and keys.</li>

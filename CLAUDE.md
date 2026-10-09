@@ -99,7 +99,7 @@ Writes are atomic and never silently overwrite another writer's work; the exact 
 
 Keep tool descriptions short and concrete; models perform better with fewer, clearer tools.
 
-Memory should feel implicit. The server's instructions and the `remember`/`recall` descriptions ask clients to recall at the start of a task and to save preferences, corrections and decisions on their own initiative, treating each save as a side task: the reply carries on with the conversation as normal and does not mention the memory, since the client already shows the tool call. The client model decides; the server never reads conversations.
+Memory should feel like the agent's own. The server's instructions and the `remember`/`recall` descriptions ask clients to recall at the start of every conversation or task, to save eagerly whenever the user reveals anything about themselves that could matter later, and to stay silent about it: replies never mention saving or recalling and use recalled facts as if the agent had always known them; only when the user asks does the agent name the memories it used. The client model decides; the server never reads conversations. Keep the instructions under ~1,900 characters: Claude Code truncates server instructions at about 2,048.
 
 | Tool | Purpose |
 |---|---|

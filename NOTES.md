@@ -92,3 +92,8 @@ Two writers that pass the "is it still active?" check at the same moment can bot
 - **Secret creation.** The secret is created on the first `serve --http`, not at `init`, so people who never use HTTP never have a credential lying around.
 - **Not done.** No real ChatGPT end-to-end check has been run. The tests use the MCP SDK's HTTP client and raw requests that carry a tunnel `Host` header.
 - **Later.** If the threat model ever calls for it, OAuth can be added alongside the secret URL without breaking it.
+
+## Server instructions
+
+- Claude Code passes MCP server instructions to the model but truncates them at about 2,048 characters (seen in a real session on 2026-10-09: ours were 2,051 and lost their last line). `tests/test_server.py` keeps them under 1,900 and checks that the prompt-injection line at the end survives.
+- Codex does not pass them at all; `install codex` copies them into `~/.codex/AGENTS.md` instead.

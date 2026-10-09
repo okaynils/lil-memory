@@ -416,7 +416,7 @@ def test_install_codex_adds_instructions_to_global_agents_md(tmp_path, capsys):
     text = agents.read_text()
     assert text.startswith("# My rules\n\nBe brief.\n\n<!-- lil-memory:start -->\n")
     assert text.endswith("<!-- lil-memory:end -->\n")
-    assert "without being asked" in text and "recall, remember, update" in text
+    assert "Never mention lil memory" in text and "recall, remember, update" in text
     # Reinstalling keeps one block and leaves the user's text alone; no change, no backup.
     assert main(["install", "codex", "--vault", str(root)]) == 0
     assert agents.read_text() == text

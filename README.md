@@ -42,7 +42,7 @@ uvx lil-memory install claude-desktop    # 2. connect a client (or: claude-code,
    - "Remember that I prefer British spelling."
    - "Load my context for acme-site."
 
-   Usually you don't need to ask: connected AIs recall what's relevant and save your preferences, corrections and decisions on their own, without derailing the conversation.
+   Usually you don't need to ask: connected AIs treat lil memory as their own memory. They save what they learn about you and use it silently, as if they had always known.
 
 Run `lil-memory open` to explore and edit your memories in Obsidian.
 
