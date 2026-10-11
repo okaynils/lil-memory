@@ -123,3 +123,10 @@ Measured on the owner's MacBook, both in clean `uv venv -p 3.12` environments, a
 - `load_context(project)` loads the hub, what it links to and its backlinks, deduplicated; for older vaults it falls back to a folder of that name.
 - `index.py` (321 lines) and `server.py` (304 lines) are now slightly over the brief's ~300-line guideline.
 
+## Proactive project notes (2026-10-11)
+
+- How Basic Memory does it (its own instructions, AI guide and docs): projects are separate knowledge bases that the user creates and selects by hand (`bm project add`, a default project, or asking the AI to switch); its docs mention no detection from the working directory. Its instructions say "Do not create notes unprompted" and ask the AI to confirm meaningful writes. Optional Claude Code and Codex hooks print a short summary of recent notes at session start, let the agent write a checkpoint before compaction, and otherwise log session metadata only.
+- lil memory instead asks the model to keep project hub notes unprompted (instructions) and tells coding agents which repository they are in: `server.project_hint` walks up from the server's working directory to the first folder with `.git`, stopping at the home folder, and the hint names `[[<slug of the repo folder>]]`.
+- Verified on 2026-10-11 that Claude Code starts each lil memory server in the session's project folder (four live sessions, four project folders). Not yet verified for Codex; its config supports a `cwd` key.
+- The hint sits before the last paragraph of the instructions, so the line about stored data stays last. A test keeps the total under 2,000 characters even for a 40-character repository name.
+
