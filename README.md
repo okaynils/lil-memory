@@ -101,11 +101,12 @@ The connected AI exposes six tools: `remember`, `recall`, `get`, `update`, `forg
 - **Remote clients such as ChatGPT** can only reach a server through an HTTPS URL, and ChatGPT can't send a static token. So HTTP mode keeps things minimal: the URL itself is the secret. Use it with caution, because anyone who has the URL gets full access to your memories (see the trade-off below).
 
   ```sh
-  lil-memory serve --http                         # prints http://127.0.0.1:8765/mcp/<secret>
-  cloudflared tunnel --url http://127.0.0.1:8765  # or any other tunnel
+  lil-memory serve --http                         # serves http://127.0.0.1:8765/mcp/<secret>
+  cloudflared tunnel --url http://127.0.0.1:8765  # or any other tunnel; prints its https host
+  lil-memory url --tunnel <host>                  # prints https://<host>/mcp/<secret>
   ```
 
-  In ChatGPT, turn on developer mode in the settings, then add `https://<tunnel-host>/mcp/<secret>` as a custom connector with no authentication.
+  In ChatGPT, turn on developer mode in the settings, then add that address as a custom connector with no authentication.
 
   **The trade-off:** anyone who has that URL can read, change and forget all of your memories. A URL leaks more easily than a password, for example through screenshots, shell history or the tunnel provider. OpenAI also stores it in your connector settings, and sees every memory ChatGPT reads. HTTP mode only runs while you keep `serve --http` open. `lil-memory serve --http --rotate` replaces the secret, and the old URL stops working immediately. It is good practice to rotate the URL once in a while, and right away if you think it has leaked. To keep HTTP mode running on your laptop or an always-on machine, see [Run it all the time](https://lilmemory.nils.me/connect.html#always-on).
 

@@ -40,7 +40,7 @@ def test_no_command_prints_help(capsys):
     assert main([]) == 0
     out = capsys.readouterr().out
     assert "usage: lil-memory" in out
-    for command in ["init", "serve", "install", "open", "reindex", "doctor"]:
+    for command in ["init", "serve", "install", "url", "open", "reindex", "doctor"]:
         assert command in out
 
 
@@ -444,3 +444,40 @@ def test_install_codex_refuses_a_damaged_block(tmp_path, capsys):
     assert main(["install", "codex", "--vault", str(root)]) == 1
     assert "damaged" in capsys.readouterr().err
     assert agents.read_text() == "<!-- lil-memory:start -->\nhalf a block\n"
+
+
+def test_url_prints_the_secret_address(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    capsys.readouterr()
+    assert main(["url", "--vault", str(root)]) == 0
+    out, err = capsys.readouterr()
+    secret = (root / ".lil-memory/http-secret").read_text().strip()
+    assert out == f"http://127.0.0.1:8765/mcp/{secret}\n"  # only the address, ready to pipe
+    assert "--tunnel" in err and "Anyone with this URL" in err
+    assert (root / ".lil-memory/http-secret").stat().st_mode & 0o777 == 0o600
+    assert main(["url", "--vault", str(root), "--port", "9000"]) == 0
+    assert capsys.readouterr().out == f"http://127.0.0.1:9000/mcp/{secret}\n"  # same secret
+
+
+@pytest.mark.parametrize(
+    "tunnel", ["abc.trycloudflare.com", "https://abc.trycloudflare.com/", "abc.example.com:443"]
+)
+def test_url_with_a_tunnel_prints_the_chatgpt_address(tmp_path, capsys, tunnel):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    capsys.readouterr()
+    assert main(["url", "--vault", str(root), "--tunnel", tunnel]) == 0
+    secret = (root / ".lil-memory/http-secret").read_text().strip()
+    host = tunnel.removeprefix("https://").rstrip("/")
+    assert capsys.readouterr().out == f"https://{host}/mcp/{secret}\n"
+
+
+def test_url_rejects_a_tunnel_that_is_not_a_host_and_needs_a_vault(tmp_path, capsys):
+    root = tmp_path / "vault"
+    main(["init", str(root)])
+    capsys.readouterr()
+    assert main(["url", "--vault", str(root), "--tunnel", "abc.example.com/mcp/x"]) == 1
+    out, err = capsys.readouterr()
+    assert out == "" and "--tunnel takes a host" in err
+    assert main(["url", "--vault", str(tmp_path / "nowhere")]) == 1

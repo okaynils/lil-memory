@@ -67,8 +67,10 @@ This prints a public <code>https://...</code> host. It changes every time the tu
 for a fixed one, see <a href="#always-on">Run it all the time</a>.</li>
 <li>In ChatGPT, turn on developer mode. Where the switch is, and whether you have it, depends on your plan;
 see OpenAI's <a href="https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta">help article on developer mode</a>.</li>
-<li>Add a custom connector (OpenAI also calls these apps) with the URL <code>https://&lt;tunnel-host&gt;/mcp/&lt;secret&gt;</code>
-and no authentication.</li>
+<li>Print the address to paste, using the host from step 2 (on a Mac, <code>| pbcopy</code> puts it on your clipboard):
+<pre>lil-memory url --tunnel abc-def.trycloudflare.com</pre>
+It prints <code>https://abc-def.trycloudflare.com/mcp/&lt;secret&gt;</code>.</li>
+<li>Add a custom connector (OpenAI also calls these apps) with that address and no authentication.</li>
 <li>Turn the connector on in a chat and say "Load my context for acme-site."</li>
 </ol>
 
@@ -95,7 +97,7 @@ Point yours at the <code>lil-memory</code> program and the <code>serve</code> co
 <li>Use the full path from <code>which lil-memory</code>. Apps opened from the Dock or Start menu often do not see your shell's <code>PATH</code>.</li>
 <li>Add <code>"--vault", "/path/to/vault"</code> to <code>args</code> if your vault is not at <code>~/lil-memory</code>.</li>
 <li>Look up where your client keeps this config in its own docs; the key is sometimes called <code>servers</code> or <code>context_servers</code> instead of <code>mcpServers</code>.</li>
-<li>If a client only accepts a URL, run <code>lil-memory serve --http</code> and give it <code>http://127.0.0.1:8765/mcp/&lt;secret&gt;</code>.
+<li>If a client only accepts a URL, run <code>lil-memory serve --http</code> and give it the address <code>lil-memory url</code> prints.
 A client on the same machine needs no tunnel.</li>
 </ul>
 
@@ -167,8 +169,8 @@ loginctl enable-linger $USER                # keep it running without anyone log
 
 <h3>The URL and the tunnel</h3>
 
-<p>The secret URL stays the same across restarts. It is
-<code>http://127.0.0.1:8765/mcp/</code> followed by the contents of <code>~/lil-memory/.lil-memory/http-secret</code>.</p>
+<p>The secret URL stays the same across restarts. <code>lil-memory url</code> prints it at any time, even while the server is not running;
+add <code>--tunnel &lt;host&gt;</code> for the public address.</p>
 
 <p>A quick tunnel (<code>cloudflared tunnel --url ...</code>) gets a new random hostname every time it starts,
 which breaks the ChatGPT connector. For a setup that runs all the time, use a tunnel with a fixed hostname,

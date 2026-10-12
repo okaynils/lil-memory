@@ -7,6 +7,7 @@ for the MCP protocol.
 import argparse
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -21,6 +22,10 @@ DEFAULT_VAULT = "~/lil-memory"
 DEFAULT_PORT = 8765
 GITIGNORE = "http-secret\n"
 LABELS = {True: "ok  ", False: "FAIL", None: "note"}
+SECRET_WARNING = (
+    "Anyone with this URL can read and change your memories. "
+    "`lil-memory serve --http --rotate` replaces it."
+)
 
 
 def vault_path(args: argparse.Namespace) -> Path:
@@ -84,13 +89,34 @@ def http_secret(root: Path, rotate: bool) -> str:
     return path.read_text().strip()
 
 
+def http_url(root: Path, port: int, tunnel: str | None = None, rotate: bool = False) -> str:
+    """The secret MCP address: local, or behind a tunnel host for clients such as ChatGPT."""
+    secret = http_secret(root, rotate)
+    if not tunnel:
+        return f"http://127.0.0.1:{port}/mcp/{secret}"
+    host = tunnel.strip().removeprefix("https://").removeprefix("http://").rstrip("/")
+    if not re.fullmatch(r"[A-Za-z0-9.-]+(:[0-9]+)?", host):
+        raise ValueError(f"--tunnel takes a host such as abc.trycloudflare.com, not {tunnel!r}")
+    return f"https://{host}/mcp/{secret}"
+
+
+def cmd_url(args: argparse.Namespace) -> int:
+    root = args.root
+    try:
+        print(http_url(root, args.port, args.tunnel))
+    except ValueError as e:
+        return fail(str(e))
+    if not args.tunnel:
+        print("For ChatGPT, add --tunnel <the https host your tunnel prints>.", file=sys.stderr)
+    print(SECRET_WARNING, file=sys.stderr)
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     from lil_memory.index import check_fts5
 
     check_fts5()
-    root = vault_path(args)
-    if read_config(root) is None:
-        return no_vault(root)
+    root = args.root
     if args.rotate and not args.http:
         return fail("--rotate only applies to --http")
     if not args.http:
@@ -100,26 +126,22 @@ def cmd_serve(args: argparse.Namespace) -> int:
         return 0
     from lil_memory.server import serve_http
 
-    secret = http_secret(root, args.rotate)
-    local = f"http://127.0.0.1:{args.port}"
+    url = http_url(root, args.port, rotate=args.rotate)
     print(
-        f"lil memory is serving {root} over HTTP at\n\n    {local}/mcp/{secret}\n\n"
-        f"For ChatGPT, expose it with a tunnel, e.g. `cloudflared tunnel --url {local}`,\n"
-        f"then add https://<tunnel-host>/mcp/{secret} as a connector with no authentication.\n"
-        "Anyone with this URL can read and change your memories. "
-        "`serve --http --rotate` replaces it.",
+        f"lil memory is serving {root} over HTTP at\n\n    {url}\n\n"
+        f"For ChatGPT, put a tunnel in front of it, e.g. `cloudflared tunnel --url "
+        f"http://127.0.0.1:{args.port}`,\nthen run `lil-memory url --tunnel <host>` for the "
+        f"address to add as a connector with no authentication.\n{SECRET_WARNING}",
         file=sys.stderr,
     )
-    serve_http(root, secret, args.port)
+    serve_http(root, url.rsplit("/", 1)[1], args.port)
     return 0
 
 
 def cmd_reindex(args: argparse.Namespace) -> int:
     from lil_memory.index import Index
 
-    root = vault_path(args)
-    if read_config(root) is None:
-        return no_vault(root)
+    root = args.root
     start = time.perf_counter()
     index = Index(root)
     index.reindex()
@@ -132,9 +154,7 @@ def cmd_reindex(args: argparse.Namespace) -> int:
 def cmd_install(args: argparse.Namespace) -> int:
     from lil_memory import install
 
-    root = vault_path(args)
-    if read_config(root) is None:
-        return no_vault(root)
+    root = args.root
     try:
         done = [install.install(args.client, root)]
         if args.client == "codex":  # Codex does not show MCP server instructions to the model
@@ -171,9 +191,7 @@ def launch(target: str) -> None:
 
 
 def cmd_open(args: argparse.Namespace) -> int:
-    root = vault_path(args)
-    if read_config(root) is None:
-        return no_vault(root)
+    root = args.root
     try:
         vaults = json.loads(obsidian_config().read_text(encoding="utf-8"))["vaults"]
         ids = [k for k, v in vaults.items() if Path(v["path"]).expanduser().resolve() == root]
@@ -271,6 +289,9 @@ def build_parser() -> argparse.ArgumentParser:
     command("install", cmd_install, "add lil-memory to a client's MCP config").add_argument(
         "client", choices=["claude-desktop", "claude-code", "codex"]
     )
+    url = command("url", cmd_url, "print the secret HTTP address to connect ChatGPT and others")
+    url.add_argument("--tunnel", help="your tunnel's https host, e.g. abc.trycloudflare.com")
+    url.add_argument("--port", type=int, default=DEFAULT_PORT, help="HTTP port")
     command("open", cmd_open, "open the vault in Obsidian to explore your memories")
     command("reindex", cmd_reindex, "rebuild the index from the files")
     command("doctor", cmd_doctor, "check FTS5, the vault and client installs")
@@ -283,6 +304,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
+    args.root = vault_path(args)
+    if args.command not in ("init", "doctor") and read_config(args.root) is None:
+        return no_vault(args.root)  # every other command needs an existing vault
     try:
         return args.func(args)
     except RuntimeError as e:

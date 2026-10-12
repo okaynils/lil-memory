@@ -150,7 +150,7 @@ def test_access_logs_do_not_print_the_secret(root):
     with http_server(root) as (base, secret, proc):
         post_initialize(f"{base}/mcp/{secret}")
     output = proc.stdout.read() + proc.stderr.read()
-    assert output.count(secret) == 2  # only in the startup message (local and tunnel URL)
+    assert output.count(secret) == 1  # only in the startup message
 
 
 def test_rotate_requires_http(root, capsys):
